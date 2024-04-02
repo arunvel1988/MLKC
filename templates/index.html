@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Managed Local Kubernetes Cluster (MLKC)</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Managed Local Kubernetes Cluster (MLKC)</h1>
+        <hr>
+        <div class="mt-4">
+            <a href="https://kind.sigs.k8s.io/" target="_blank" class="btn btn-primary">Kind Home Page</a>
+            <a href="{{ url_for('list_clusters') }}" class="btn btn-info">List Clusters</a>
+            <a href="{{ url_for('create_cluster') }}" class="btn btn-success">Create Cluster</a>
+        </div>
+    </div>
+</body>
+</html>

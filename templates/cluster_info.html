@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cluster Information</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Cluster Information: {{ name }}</h1>
+        <hr>
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% else %}
+        <h2>Deployments</h2>
+        <pre>{{ deployments|join('\n') }}</pre>
+
+        <h2>Pods</h2>
+        <pre>{{ pods|join('\n') }}</pre>
+
+        <h2>Services</h2>
+        <pre>{{ services|join('\n') }}</pre>
+        {% endif %}
+
+        <a href="{{ url_for('list_clusters') }}" class="btn btn-secondary">Back to Cluster List</a>
+    </div>
+</body>
+</html>

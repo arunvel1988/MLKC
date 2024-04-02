@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Cluster</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Create Cluster</h1>
+        <hr>
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form method="post">
+            <div class="form-group">
+                <label for="name">Cluster Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="k8s_version">Kubernetes Version</label>
+                <input type="text" class="form-control" id="k8s_version" name="k8s_version" required>
+            </div>
+            <div class="form-group">
+                <label for="num_nodes">Number of Nodes</label>
+                <input type="number" class="form-control" id="num_nodes" name="num_nodes" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Cluster</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
+    </div>
+</body>
+</html>

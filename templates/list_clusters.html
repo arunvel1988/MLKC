@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cluster List</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Cluster List</h1>
+        <hr>
+        <h2>Clusters in Database</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Kubernetes Version</th>
+                    <th>Number of Nodes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cluster in db_clusters %}
+                <tr>
+                    <td>{{ cluster[0] }}</td>
+                    <td>{{ cluster[1] }}</td>
+                    <td>{{ cluster[2] }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_cluster') }}" method="post">
+                            <input type="hidden" name="name" value="{{ cluster[0] }}">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Clusters from 'kind get clusters'</h2>
+        <ul>
+            {% for cluster in kind_clusters %}
+            <li><a href="{{ url_for('cluster_info', name=cluster) }}">{{ cluster }}</a></li>
+            {% endfor %}
+        </ul>
+
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+    </div>
+</body>
+</html>
