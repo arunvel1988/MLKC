@@ -3,6 +3,7 @@ import sqlite3
 import subprocess
 import yaml
 import json
+import threading
 
 app = Flask(__name__)
 
@@ -139,6 +140,7 @@ def cluster_info(name):
         deployments = json.loads(deployments_output)['items']
         deployments_data = []
         for deployment in deployments:
+            ready_replicas = deployment['status'].get('readyReplicas', 'N/A')
             deployments_data.append({
                 'name': deployment['metadata']['name'],
                 'ready': f"{deployment['status']['readyReplicas']}/{deployment['spec']['replicas']}",
@@ -174,36 +176,61 @@ def cluster_info(name):
                 'age': service['metadata']['creationTimestamp']
             })
 
-        # Get configmaps
-        configmaps_output = subprocess.check_output(['kubectl', 'get', 'configmaps', '-o', 'json']).decode('utf-8')
-        configmaps = json.loads(configmaps_output)['items']
-        configmaps_data = []
-        for configmap in configmaps:
-            configmaps_data.append({
-                'name': configmap['metadata']['name'],
-                'data': ','.join(configmap['data'].keys() if configmap['data'] else []),
-                'age': configmap['metadata']['creationTimestamp']
-            })
 
-        # Get secrets
-        secrets_output = subprocess.check_output(['kubectl', 'get', 'secrets', '-o', 'json']).decode('utf-8')
-        secrets = json.loads(secrets_output)['items']
-        secrets_data = []
-        for secret in secrets:
-            secrets_data.append({
-                'name': secret['metadata']['name'],
-                'type': secret['type'],
-                'data': len(secret['data'].keys()) if secret['data'] else 0,
-                'age': secret['metadata']['creationTimestamp']
-            })
 
         return render_template('cluster_info.html', name=name, nodes=nodes_data, deployments=deployments_data, pods=pods_data,
-                               services=services_data, configmaps=configmaps_data, secrets=secrets_data)
+                               services=services_data)
     except subprocess.CalledProcessError as e:
         error = f"Error getting cluster information: {str(e)}"
         return render_template('cluster_info.html', name=name, error=error)
     
 
+@app.route('/upload_yaml/<cluster_name>', methods=['GET', 'POST'])
+def upload_yaml(cluster_name):
+    if request.method == 'POST':
+        if 'yaml_file' not in request.files:
+            return redirect(url_for('cluster_info', name=cluster_name, error='No file uploaded'))
+
+        file = request.files['yaml_file']
+
+        if file.filename == '':
+            return redirect(url_for('cluster_info', name=cluster_name, error='No file selected'))
+
+        yaml_content = file.read().decode('utf-8')
+
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            subprocess.run(['kubectl', 'apply', '-f', '-'], input=yaml_content.encode(), check=True)
+            return redirect(url_for('cluster_info', name=cluster_name, message='Deployment successful'))
+        except subprocess.CalledProcessError as e:
+            error = f"Error deploying YAML: {str(e)}"
+            return redirect(url_for('cluster_info', name=cluster_name, error=error))
+
+    return render_template('upload_yaml.html', cluster_name=cluster_name)
+
+
+def port_forward_thread(service_name, host_port, container_port):
+    subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}'], check=True)
+
+@app.route('/port_forward/<cluster_name>', methods=['GET', 'POST'])
+def port_forward(cluster_name):
+    if request.method == 'POST':
+        service_name = request.form['service_name']
+        container_port = request.form['container_port']
+        host_port = request.form['host_port']
+
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            threading.Thread(target=port_forward_thread, args=(service_name, host_port, container_port)).start()
+            message = f'http://localhost:{host_port}'
+            return render_template('port_forward.html', cluster_name=cluster_name, message=message)
+        except subprocess.CalledProcessError as e:
+            error = f"Error during port forwarding: {str(e)}"
+            return redirect(url_for('cluster_info', name=cluster_name, error=error))
+
+    return render_template('port_forward.html', cluster_name=cluster_name)
 
 @app.route('/cluster_created')
 def cluster_created():

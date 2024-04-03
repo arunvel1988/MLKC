@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload YAML</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="mt-5">
+            <h1>Upload YAML for Cluster: {{ cluster_name }}</h1>
+            <form method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="yaml_file">Select a YAML file:</label>
+                    <input type="file" class="form-control-file" id="yaml_file" name="yaml_file" required>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Deploy</button>
+                    <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="btn btn-secondary">Back</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
