@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import subprocess
 import yaml
+import json
 
 app = Flask(__name__)
 
@@ -89,39 +90,120 @@ def create_cluster():
 @app.route('/delete_cluster', methods=['POST'])
 def delete_cluster():
     name = request.form['name']
+
+    # Delete the Kind cluster
+    try:
+        result = subprocess.run(['kind', 'delete', 'cluster', '--name', name], check=True, capture_output=True, text=True)
+        print(f"Kind cluster '{name}' deleted successfully.")
+        print(f"Output: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error deleting Kind cluster: {str(e)}")
+        print(f"Output: {e.output}")
+        # Handle the error appropriately (e.g., show an error message to the user)
+        error_message = f"Failed to delete cluster '{name}'. Please check the logs for more information."
+        return redirect(url_for('list_clusters', error=error_message))
+
+    # Delete the cluster from the database
     conn = sqlite3.connect('clusters.db')
     c = conn.cursor()
     c.execute("DELETE FROM clusters WHERE name=?", (name,))
     conn.commit()
     conn.close()
-    subprocess.run(['kind', 'delete', 'cluster', '--name', name])
-    return redirect(url_for('list_clusters'))
+
+    success_message = f"Cluster '{name}' deleted successfully."
+    return redirect(url_for('list_clusters', message=success_message))
 
 @app.route('/cluster_info/<name>')
 def cluster_info(name):
     # Get cluster information using kubectl
     try:
         # Change the Kubernetes context to the selected cluster
-          # Use the correct context name format
-        context_name = f'kind-{name}'
+        context_name = f"kind-{name}"
         subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
 
+        # Get nodes
+        nodes_output = subprocess.check_output(['kubectl', 'get', 'nodes', '-o', 'json']).decode('utf-8')
+        nodes = json.loads(nodes_output)['items']
+        nodes_data = []
+        for node in nodes:
+            nodes_data.append({
+                'name': node['metadata']['name'],
+                'status': node['status']['conditions'][-1]['type'],
+                'roles': ','.join(node['metadata']['labels'].get('kubernetes.io/role', [])),
+                'age': node['metadata']['creationTimestamp'],
+                'version': node['status']['nodeInfo']['kubeletVersion']
+            })
+
         # Get deployments
-        deployments_output = subprocess.check_output(['kubectl', 'get', 'deployments']).decode('utf-8')
-        deployments = deployments_output.strip().split('\n') if deployments_output.strip() else []
+        deployments_output = subprocess.check_output(['kubectl', 'get', 'deployments', '-o', 'json']).decode('utf-8')
+        deployments = json.loads(deployments_output)['items']
+        deployments_data = []
+        for deployment in deployments:
+            deployments_data.append({
+                'name': deployment['metadata']['name'],
+                'ready': f"{deployment['status']['readyReplicas']}/{deployment['spec']['replicas']}",
+                'uptodate': deployment['status']['updatedReplicas'],
+                'available': deployment['status']['availableReplicas'],
+                'age': deployment['metadata']['creationTimestamp']
+            })
 
         # Get pods
-        pods_output = subprocess.check_output(['kubectl', 'get', 'pods']).decode('utf-8')
-        pods = pods_output.strip().split('\n') if pods_output.strip() else []
+        pods_output = subprocess.check_output(['kubectl', 'get', 'pods', '-o', 'json']).decode('utf-8')
+        pods = json.loads(pods_output)['items']
+        pods_data = []
+        for pod in pods:
+            pods_data.append({
+                'name': pod['metadata']['name'],
+                'ready': f"{sum(container['ready'] for container in pod['status']['containerStatuses'])}/{len(pod['spec']['containers'])}",
+                'status': pod['status']['phase'],
+                'restarts': sum(container['restartCount'] for container in pod['status']['containerStatuses']),
+                'age': pod['metadata']['creationTimestamp']
+            })
 
         # Get services
-        services_output = subprocess.check_output(['kubectl', 'get', 'services']).decode('utf-8')
-        services = services_output.strip().split('\n') if services_output.strip() else []
+        services_output = subprocess.check_output(['kubectl', 'get', 'services', '-o', 'json']).decode('utf-8')
+        services = json.loads(services_output)['items']
+        services_data = []
+        for service in services:
+            services_data.append({
+                'name': service['metadata']['name'],
+                'type': service['spec']['type'],
+                'clusterip': service['spec']['clusterIP'],
+                'externalip': ','.join(service['spec'].get('externalIPs', [])),
+                'ports': ','.join(f"{port['port']}/{port['protocol']}" for port in service['spec']['ports']),
+                'age': service['metadata']['creationTimestamp']
+            })
 
-        return render_template('cluster_info.html', name=name, deployments=deployments, pods=pods, services=services)
+        # Get configmaps
+        configmaps_output = subprocess.check_output(['kubectl', 'get', 'configmaps', '-o', 'json']).decode('utf-8')
+        configmaps = json.loads(configmaps_output)['items']
+        configmaps_data = []
+        for configmap in configmaps:
+            configmaps_data.append({
+                'name': configmap['metadata']['name'],
+                'data': ','.join(configmap['data'].keys() if configmap['data'] else []),
+                'age': configmap['metadata']['creationTimestamp']
+            })
+
+        # Get secrets
+        secrets_output = subprocess.check_output(['kubectl', 'get', 'secrets', '-o', 'json']).decode('utf-8')
+        secrets = json.loads(secrets_output)['items']
+        secrets_data = []
+        for secret in secrets:
+            secrets_data.append({
+                'name': secret['metadata']['name'],
+                'type': secret['type'],
+                'data': len(secret['data'].keys()) if secret['data'] else 0,
+                'age': secret['metadata']['creationTimestamp']
+            })
+
+        return render_template('cluster_info.html', name=name, nodes=nodes_data, deployments=deployments_data, pods=pods_data,
+                               services=services_data, configmaps=configmaps_data, secrets=secrets_data)
     except subprocess.CalledProcessError as e:
         error = f"Error getting cluster information: {str(e)}"
         return render_template('cluster_info.html', name=name, error=error)
+    
+
 
 @app.route('/cluster_created')
 def cluster_created():

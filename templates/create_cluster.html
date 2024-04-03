@@ -3,32 +3,98 @@
 <head>
     <title>Create Cluster</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .form-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .spinner {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mt-5">Create Cluster</h1>
-        <hr>
-        {% if error %}
-        <div class="alert alert-danger">
-            {{ error }}
+        <div class="form-container mt-5">
+            <h2 class="text-center mb-4">Create Kubernetes Cluster</h2>
+            {% if error %}
+            <div class="alert alert-danger">
+                {{ error }}
+            </div>
+            {% endif %}
+            <form id="createForm" method="post">
+                <div class="form-group">
+                    <label for="name">Cluster Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required pattern=".{1,}" title="Cluster name cannot be blank">
+                </div>
+                <div class="form-group">
+                    <label for="k8s_version">Kubernetes Version</label>
+                    <select class="form-control" id="k8s_version" name="k8s_version" required>
+                        <option value="">Select a version</option>
+                        <option value="1.24.0">1.24.0</option>
+                        <option value="1.25.0">1.25.0</option>
+                        <option value="1.26.0">1.26.0</option>
+                        <option value="1.27.0">1.27.0</option>
+                        <option value="1.28.0">1.28.0</option>
+                        <option value="1.29.0">1.29.0</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cluster Type</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="cluster_type" id="single_node" value="single" checked>
+                        <label class="form-check-label" for="single_node">Single Node Cluster</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="cluster_type" id="ha_cluster" value="ha">
+                        <label class="form-check-label" for="ha_cluster">Highly Available Cluster</label>
+                    </div>
+                </div>
+                <div class="form-group" id="num_nodes_group" style="display: none;">
+                    <label for="num_nodes">Number of Worker Nodes</label>
+                    <input type="number" class="form-control" id="num_nodes" name="num_nodes" min="1" value="1">
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg">Create Cluster</button>
+                </div>
+            </form>
+            <div class="spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Creating cluster...</span>
+                </div>
+                <p>Creating cluster, please wait...</p>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+            </div>
         </div>
-        {% endif %}
-        <form method="post">
-            <div class="form-group">
-                <label for="name">Cluster Name</label>
-                <input type="text" class="form-control" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="k8s_version">Kubernetes Version</label>
-                <input type="text" class="form-control" id="k8s_version" name="k8s_version" required>
-            </div>
-            <div class="form-group">
-                <label for="num_nodes">Number of Nodes</label>
-                <input type="number" class="form-control" id="num_nodes" name="num_nodes" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Create Cluster</button>
-        </form>
-        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('input[name="cluster_type"]').change(function() {
+                if ($(this).val() === 'ha') {
+                    $('#num_nodes_group').show();
+                } else {
+                    $('#num_nodes_group').hide();
+                }
+            });
+
+            $('#createForm').submit(function() {
+                $('.spinner').show();
+                $('form').hide();
+            });
+        });
+    </script>
 </body>
 </html>
