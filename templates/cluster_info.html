@@ -3,27 +3,208 @@
 <head>
     <title>Cluster Information</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .cluster-info {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table th {
+            background-color: #343a40;
+            color: #fff;
+        }
+        .table td {
+            vertical-align: middle;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        .spinner-overlay {
+            /* ... (existing spinner styles) ... */
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mt-5">Cluster Information: {{ name }}</h1>
-        <hr>
-        {% if error %}
-        <div class="alert alert-danger">
-            {{ error }}
+        <div class="cluster-info mt-5">
+            <h1 class="text-center mb-4">
+                <i class="fas fa-code-branch"></i> Cluster Information: {{ name }}
+            </h1>
+            {% if error %}
+            <div class="alert alert-danger">
+                {{ error }}
+            </div>
+            {% else %}
+            <div class="table-responsive">
+                <!-- Nodes -->
+                <h2><i class="fas fa-server"></i> Nodes</h2>
+                <table class="table table-striped table-bordered">
+                    <!-- ... (existing nodes table) ... -->
+                </table>
+            </div>
+
+            <div class="table-responsive">
+                <!-- Deployments -->
+                <h2><i class="fas fa-code"></i> Deployments</h2>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Ready</th>
+                            <th>Up-to-date</th>
+                            <th>Available</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for deployment in deployments %}
+                        <tr>
+                            <td>{{ deployment.name }}</td>
+                            <td>{{ deployment.ready }}</td>
+                            <td>{{ deployment.uptodate }}</td>
+                            <td>{{ deployment.available }}</td>
+                            <td>{{ deployment.age }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-responsive">
+                <!-- Pods -->
+                <h2><i class="fas fa-cubes"></i> Pods</h2>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Ready</th>
+                            <th>Status</th>
+                            <th>Restarts</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pod in pods %}
+                        <tr>
+                            <td>{{ pod.name }}</td>
+                            <td>{{ pod.ready }}</td>
+                            <td><span class="badge badge-{{ 'success' if pod.status == 'Running' else 'danger' }}">{{ pod.status }}</span></td>
+                            <td>{{ pod.restarts }}</td>
+                            <td>{{ pod.age }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-responsive">
+                <!-- Services -->
+                <h2><i class="fas fa-network-wired"></i> Services</h2>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Cluster-IP</th>
+                            <th>External-IP</th>
+                            <th>Ports</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in services %}
+                        <tr>
+                            <td>{{ service.name }}</td>
+                            <td>{{ service.type }}</td>
+                            <td>{{ service.clusterip }}</td>
+                            <td>{{ service.externalip }}</td>
+                            <td>{{ service.ports }}</td>
+                            <td>{{ service.age }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-responsive">
+                <!-- ConfigMaps -->
+                <h2><i class="fas fa-file-alt"></i> ConfigMaps</h2>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Data</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for configmap in configmaps %}
+                        <tr>
+                            <td>{{ configmap.name }}</td>
+                            <td>{{ configmap.data }}</td>
+                            <td>{{ configmap.age }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-responsive">
+                <!-- Secrets -->
+                <h2><i class="fas fa-key"></i> Secrets</h2>
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Data</th>
+                            <th>Age</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for secret in secrets %}
+                        <tr>
+                            <td>{{ secret.name }}</td>
+                            <td>{{ secret.type }}</td>
+                            <td>{{ secret.data }}</td>
+                            <td>{{ secret.age }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('list_clusters') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Cluster List</a>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <h2>Deployments</h2>
-        <pre>{{ deployments|join('\n') }}</pre>
-
-        <h2>Pods</h2>
-        <pre>{{ pods|join('\n') }}</pre>
-
-        <h2>Services</h2>
-        <pre>{{ services|join('\n') }}</pre>
-        {% endif %}
-
-        <a href="{{ url_for('list_clusters') }}" class="btn btn-secondary">Back to Cluster List</a>
     </div>
+
+    <div id="spinner" class="spinner-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Show the spinner overlay
+            $('#spinner').show();
+
+            // Simulate a delay of 2 seconds (adjust as needed)
+            setTimeout(function() {
+                // Hide the spinner overlay
+                $('#spinner').hide();
+            }, 2000);
+        });
+    </script>
 </body>
 </html>

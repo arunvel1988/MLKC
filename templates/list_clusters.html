@@ -3,46 +3,92 @@
 <head>
     <title>Cluster List</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .cluster-list {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .cluster-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .cluster-card h3 {
+            margin-bottom: 10px;
+        }
+        .cluster-card .btn {
+            margin-top: 10px;
+        }
+        .spinner {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mt-5">Cluster List</h1>
-        <hr>
-        <h2>Clusters in Database</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Kubernetes Version</th>
-                    <th>Number of Nodes</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cluster in db_clusters %}
-                <tr>
-                    <td>{{ cluster[0] }}</td>
-                    <td>{{ cluster[1] }}</td>
-                    <td>{{ cluster[2] }}</td>
-                    <td>
-                        <form action="{{ url_for('delete_cluster') }}" method="post">
-                            <input type="hidden" name="name" value="{{ cluster[0] }}">
-                            <button type="submit" class="btn btn-danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
+        <div class="cluster-list mt-5">
+            <h1>Cluster List</h1>
+            <hr>
+            {% if error_message %}
+            <div class="alert alert-danger">
+                {{ error_message }}
+            </div>
+            {% endif %}
+            {% if success_message %}
+            <div class="alert alert-success">
+                {{ success_message }}
+            </div>
+            {% endif %}
+            <div class="row">
+                {% for cluster in kind_clusters %}
+                <div class="col-md-4">
+                    <div class="cluster-card">
+                        <h3>{{ cluster }}</h3>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('cluster_info', name=cluster) }}" class="btn btn-info">View Details</a>
+                            <form action="{{ url_for('delete_cluster') }}" method="post" onsubmit="return confirmDelete(this);">
+                                <input type="hidden" name="name" value="{{ cluster }}">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                                <div class="spinner spinner-border spinner-border-sm text-danger ml-2" role="status">
+                                    <span class="sr-only">Deleting...</span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-
-        <h2>Clusters from 'kind get clusters'</h2>
-        <ul>
-            {% for cluster in kind_clusters %}
-            <li><a href="{{ url_for('cluster_info', name=cluster) }}">{{ cluster }}</a></li>
-            {% endfor %}
-        </ul>
-
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+            </div>
+            <div class="mt-4">
+                <h2>Upload YAML</h2>
+                <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_yaml') }}">
+                    <div class="form-group">
+                        <label for="yaml_file">Select a YAML file:</label>
+                        <input type="file" class="form-control-file" id="yaml_file" name="yaml_file" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload and Deploy</button>
+                </form>
+            </div>
+            <div class="text-center mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function confirmDelete(form) {
+            if (confirm('Are you sure you want to delete this cluster?')) {
+                $(form).find('.spinner').show();
+                return true;
+            }
+            return false;
+        }
+    </script>
 </body>
 </html>

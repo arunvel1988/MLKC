@@ -3,16 +3,76 @@
 <head>
     <title>Managed Local Kubernetes Cluster (MLKC)</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .jumbotron {
+            background-color: #007bff;
+            color: #fff;
+            padding: 2rem 1rem;
+        }
+        .feature-icon {
+            font-size: 3rem;
+            color: #007bff;
+        }
+        .github-link {
+            color: #6c757d;
+            transition: color 0.3s ease;
+        }
+        .github-link:hover {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="mt-5">Managed Local Kubernetes Cluster (MLKC)</h1>
-        <hr>
-        <div class="mt-4">
-            <a href="https://kind.sigs.k8s.io/" target="_blank" class="btn btn-primary">Kind Home Page</a>
-            <a href="{{ url_for('list_clusters') }}" class="btn btn-info">List Clusters</a>
-            <a href="{{ url_for('create_cluster') }}" class="btn btn-success">Create Cluster</a>
+    <div class="jumbotron">
+        <div class="container">
+            <h1 class="display-4">Managed Local Kubernetes Cluster (MLKC)</h1>
+            <p class="lead">Effortlessly manage your local Kubernetes clusters with MLKC.</p>
         </div>
     </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <i class="fas fa-plus-circle feature-icon mb-3"></i>
+                        <h5 class="card-title">Create Cluster</h5>
+                        <p class="card-text">Spin up new Kind clusters with ease.</p>
+                        <a href="{{ url_for('create_cluster') }}" class="btn btn-primary">Create</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <i class="fas fa-list-ul feature-icon mb-3"></i>
+                        <h5 class="card-title">List Clusters</h5>
+                        <p class="card-text">View all your Kind clusters in one place.</p>
+                        <a href="{{ url_for('list_clusters') }}" class="btn btn-info">List</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <i class="fas fa-trash-alt feature-icon mb-3"></i>
+                        <h5 class="card-title">Delete Cluster</h5>
+                        <p class="card-text">Remove unwanted clusters effortlessly.</p>
+                        <a href="{{ url_for('list_clusters') }}" class="btn btn-danger">Delete</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center py-3">
+        <p>Powered by <a href="https://kind.sigs.k8s.io/" target="_blank">Kind</a></p>
+        <a href="https://github.com/arunvel1988/kind_kubernetes_web_ui" target="_blank" class="github-link">
+            <i class="fab fa-github"></i> Github Link
+        </a>
+    </footer>
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js" crossorigin="anonymous"></script>
 </body>
 </html>
