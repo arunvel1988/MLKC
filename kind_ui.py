@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request,jsonify, redirect, url_for
 import sqlite3
 import subprocess
 import yaml
 import json
 import threading
+
 
 app = Flask(__name__)
 
@@ -113,7 +114,6 @@ def delete_cluster():
 
     success_message = f"Cluster '{name}' deleted successfully."
     return redirect(url_for('list_clusters', message=success_message))
-
 @app.route('/cluster_info/<name>')
 def cluster_info(name):
     # Get cluster information using kubectl
@@ -122,68 +122,105 @@ def cluster_info(name):
         context_name = f"kind-{name}"
         subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
 
+        # Get namespaces
+        namespaces_output = subprocess.check_output(['kubectl', 'get', 'namespaces', '-o', 'json']).decode('utf-8')
+        namespaces = json.loads(namespaces_output)['items']
+        namespaces_data = [namespace['metadata']['name'] for namespace in namespaces]
+
         # Get nodes
         nodes_output = subprocess.check_output(['kubectl', 'get', 'nodes', '-o', 'json']).decode('utf-8')
         nodes = json.loads(nodes_output)['items']
         nodes_data = []
+        
         for node in nodes:
+            labels = node['metadata']['labels']
+            roles = []
+
+            # Check for control plane role label
+            if 'node-role.kubernetes.io/control-plane' in labels:
+                roles.append('control-plane')
+
+            # Check for worker role label
+            if 'node-role.kubernetes.io/worker' in labels:
+                roles.append('worker')
+
+            # If no specific role label found, assign 'unknown' role
+            if not roles:
+                roles.append('unknown')
+
             nodes_data.append({
                 'name': node['metadata']['name'],
                 'status': node['status']['conditions'][-1]['type'],
-                'roles': ','.join(node['metadata']['labels'].get('kubernetes.io/role', [])),
+                'roles': ','.join(roles),
                 'age': node['metadata']['creationTimestamp'],
                 'version': node['status']['nodeInfo']['kubeletVersion']
             })
 
-        # Get deployments
-        deployments_output = subprocess.check_output(['kubectl', 'get', 'deployments', '-o', 'json']).decode('utf-8')
-        deployments = json.loads(deployments_output)['items']
-        deployments_data = []
-        for deployment in deployments:
-            ready_replicas = deployment['status'].get('readyReplicas', 'N/A')
-            deployments_data.append({
-                'name': deployment['metadata']['name'],
-                'ready': f"{deployment['status']['readyReplicas']}/{deployment['spec']['replicas']}",
-                'uptodate': deployment['status']['updatedReplicas'],
-                'available': deployment['status']['availableReplicas'],
-                'age': deployment['metadata']['creationTimestamp']
-            })
+        return render_template('cluster_info.html', name=name, namespaces=namespaces_data, nodes=nodes_data)
 
-        # Get pods
-        pods_output = subprocess.check_output(['kubectl', 'get', 'pods', '-o', 'json']).decode('utf-8')
-        pods = json.loads(pods_output)['items']
-        pods_data = []
-        for pod in pods:
-            pods_data.append({
-                'name': pod['metadata']['name'],
-                'ready': f"{sum(container['ready'] for container in pod['status']['containerStatuses'])}/{len(pod['spec']['containers'])}",
-                'status': pod['status']['phase'],
-                'restarts': sum(container['restartCount'] for container in pod['status']['containerStatuses']),
-                'age': pod['metadata']['creationTimestamp']
-            })
-
-        # Get services
-        services_output = subprocess.check_output(['kubectl', 'get', 'services', '-o', 'json']).decode('utf-8')
-        services = json.loads(services_output)['items']
-        services_data = []
-        for service in services:
-            services_data.append({
-                'name': service['metadata']['name'],
-                'type': service['spec']['type'],
-                'clusterip': service['spec']['clusterIP'],
-                'externalip': ','.join(service['spec'].get('externalIPs', [])),
-                'ports': ','.join(f"{port['port']}/{port['protocol']}" for port in service['spec']['ports']),
-                'age': service['metadata']['creationTimestamp']
-            })
-
-
-
-        return render_template('cluster_info.html', name=name, nodes=nodes_data, deployments=deployments_data, pods=pods_data,
-                               services=services_data)
     except subprocess.CalledProcessError as e:
         error = f"Error getting cluster information: {str(e)}"
         return render_template('cluster_info.html', name=name, error=error)
-    
+
+@app.route('/namespace_data', methods=['POST'])
+def namespace_data():
+    cluster_name = request.form.get('cluster_name')
+    namespace = request.form.get('namespace')
+
+    # Change the Kubernetes context to the selected cluster
+    context_name = f"kind-{cluster_name}"
+    subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+
+    # Get deployments for the specified namespace
+    deployments_output = subprocess.check_output(['kubectl', 'get', 'deployments', '-n', namespace, '-o', 'json']).decode('utf-8')
+    deployments = json.loads(deployments_output)['items']
+    deployments_data = []
+    for deployment in deployments:
+        deployments_data.append({
+            'name': deployment['metadata']['name'],
+            'ready': f"{deployment['status'].get('readyReplicas', 'N/A')}/{deployment['spec']['replicas']}",
+            'uptodate': deployment['status'].get('updatedReplicas', 'N/A'),
+            'available': deployment['status'].get('availableReplicas', 'N/A'),
+            'age': deployment['metadata']['creationTimestamp']
+        })
+
+    # Get pods for the specified namespace
+    pods_output = subprocess.check_output(['kubectl', 'get', 'pods', '-n', namespace, '-o', 'json']).decode('utf-8')
+    pods = json.loads(pods_output)['items']
+    pods_data = []
+    for pod in pods:
+        pods_data.append({
+            'name': pod['metadata']['name'],
+            'ready': f"{sum(container['ready'] for container in pod['status']['containerStatuses'])}/{len(pod['spec']['containers'])}",
+            'status': pod['status']['phase'],
+            'restarts': sum(container['restartCount'] for container in pod['status']['containerStatuses']),
+            'age': pod['metadata']['creationTimestamp']
+        })
+
+    # Get services for the specified namespace
+    services_output = subprocess.check_output(['kubectl', 'get', 'services', '-n', namespace, '-o', 'json']).decode('utf-8')
+    services = json.loads(services_output)['items']
+    services_data = []
+    for service in services:
+        services_data.append({
+            'name': service['metadata']['name'],
+            'type': service['spec']['type'],
+            'clusterip': service['spec']['clusterIP'],
+            'externalip': ','.join(service['spec'].get('externalIPs', [])),
+            'ports': ','.join(f"{port['port']}/{port['protocol']}" for port in service['spec']['ports']),
+            'age': service['metadata']['creationTimestamp']
+        })
+
+    # Render the data as HTML tables
+    deployments_html = render_template('deployments_table.html', deployments=deployments_data)
+    pods_html = render_template('pods_table.html', pods=pods_data)
+    services_html = render_template('services_table.html', services=services_data)
+
+    return jsonify({
+        'deployments': deployments_html,
+        'pods': pods_html,
+        'services': services_html
+    })
 
 @app.route('/upload_yaml/<cluster_name>', methods=['GET', 'POST'])
 def upload_yaml(cluster_name):

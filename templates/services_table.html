@@ -1,0 +1,10 @@
+{% for service in services %}
+<tr>
+    <td>{{ service.name }}</td>
+    <td>{{ service.type }}</td>
+    <td>{{ service.clusterip }}</td>
+    <td>{{ service.externalip }}</td>
+    <td>{{ service.ports }}</td>
+    <td>{{ service.age }}</td>
+</tr>
+{% endfor %}

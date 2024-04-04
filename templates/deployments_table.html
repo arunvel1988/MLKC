@@ -1,0 +1,9 @@
+{% for deployment in deployments %}
+<tr>
+    <td>{{ deployment.name }}</td>
+    <td>{{ deployment.ready }}</td>
+    <td>{{ deployment.uptodate }}</td>
+    <td>{{ deployment.available }}</td>
+    <td>{{ deployment.age }}</td>
+</tr>
+{% endfor %}
