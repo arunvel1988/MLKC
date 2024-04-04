@@ -1,0 +1,9 @@
+{% for pod in pods %}
+<tr>
+    <td>{{ pod.name }}</td>
+    <td>{{ pod.ready }}</td>
+    <td><span class="badge badge-{{ 'success' if pod.status == 'Running' else 'danger' }}">{{ pod.status }}</span></td>
+    <td>{{ pod.restarts }}</td>
+    <td>{{ pod.age }}</td>
+</tr>
+{% endfor %}

@@ -66,95 +66,107 @@
                 {{ error }}
             </div>
             {% else %}
+            
+            <!-- Namespace Dropdown -->
+            <div class="form-group">
+                <label for="namespaceSelect">Select Namespace:</label>
+                <select class="form-control" id="namespaceSelect">
+                    <option value="">-- Select Namespace --</option>
+                    {% for namespace in namespaces %}
+                        <option value="{{ namespace }}">{{ namespace }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="table-responsive">
                 <!-- Nodes -->
                 <h2><i class="fas fa-server"></i> Nodes</h2>
                 <table class="table table-striped table-bordered">
-                    <!-- ... (existing nodes table) ... -->
-                </table>
-            </div>
-
-            <div class="table-responsive">
-                <!-- Deployments -->
-                <h2><i class="fas fa-code"></i> Deployments</h2>
-                <table class="table table-striped table-bordered">
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Ready</th>
-                            <th>Up-to-date</th>
-                            <th>Available</th>
-                            <th>Age</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for deployment in deployments %}
-                        <tr>
-                            <td>{{ deployment.name }}</td>
-                            <td>{{ deployment.ready }}</td>
-                            <td>{{ deployment.uptodate }}</td>
-                            <td>{{ deployment.available }}</td>
-                            <td>{{ deployment.age }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="table-responsive">
-                <!-- Pods -->
-                <h2><i class="fas fa-cubes"></i> Pods</h2>
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Ready</th>
                             <th>Status</th>
-                            <th>Restarts</th>
+                            <th>Roles</th>
                             <th>Age</th>
+                            <th>Version</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for pod in pods %}
+                        {% for node in nodes %}
                         <tr>
-                            <td>{{ pod.name }}</td>
-                            <td>{{ pod.ready }}</td>
-                            <td><span class="badge badge-{{ 'success' if pod.status == 'Running' else 'danger' }}">{{ pod.status }}</span></td>
-                            <td>{{ pod.restarts }}</td>
-                            <td>{{ pod.age }}</td>
+                            <td>{{ node.name }}</td>
+                            <td>{{ node.status }}</td>
+                            <td>{{ node.roles }}</td>
+                            <td>{{ node.age }}</td>
+                            <td>{{ node.version }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            <div class="table-responsive">
-                <!-- Services -->
-                <h2><i class="fas fa-network-wired"></i> Services</h2>
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Cluster-IP</th>
-                            <th>External-IP</th>
-                            <th>Ports</th>
-                            <th>Age</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for service in services %}
-                        <tr>
-                            <td>{{ service.name }}</td>
-                            <td>{{ service.type }}</td>
-                            <td>{{ service.clusterip }}</td>
-                            <td>{{ service.externalip }}</td>
-                            <td>{{ service.ports }}</td>
-                            <td>{{ service.age }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div id="deploymentsSection" style="display: none;">
+                <div class="table-responsive">
+                    <!-- Deployments -->
+                    <h2><i class="fas fa-code"></i> Deployments</h2>
+                    <table id="deploymentsTable" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Ready</th>
+                                <th>Up-to-date</th>
+                                <th>Available</th>
+                                <th>Age</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Deployments data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="podsSection" style="display: none;">
+                <div class="table-responsive">
+                    <!-- Pods -->
+                    <h2><i class="fas fa-cubes"></i> Pods</h2>
+                    <table id="podsTable" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Ready</th>
+                                <th>Status</th>
+                                <th>Restarts</th>
+                                <th>Age</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Pods data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="servicesSection" style="display: none;">
+                <div class="table-responsive">
+                    <!-- Services -->
+                    <h2><i class="fas fa-network-wired"></i> Services</h2>
+                    <table id="servicesTable" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Cluster-IP</th>
+                                <th>External-IP</th>
+                                <th>Ports</th>
+                                <th>Age</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Services data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="text-center mt-4">
@@ -181,6 +193,41 @@
                 // Hide the spinner overlay
                 $('#spinner').hide();
             }, 2000);
+
+            // Handle namespace selection
+            $('#namespaceSelect').change(function() {
+                var selectedNamespace = $(this).val();
+                if (selectedNamespace) {
+                    // Make an AJAX request to fetch namespace-specific data
+                    $.ajax({
+                        url: '/namespace_data',
+                        type: 'POST',
+                        data: {
+                            cluster_name: '{{ name }}',
+                            namespace: selectedNamespace
+                        },
+                        success: function(response) {
+                            // Update the tables with the received data
+                            $('#deploymentsTable tbody').html(response.deployments);
+                            $('#podsTable tbody').html(response.pods);
+                            $('#servicesTable tbody').html(response.services);
+
+                            // Show the sections
+                            $('#deploymentsSection').show();
+                            $('#podsSection').show();
+                            $('#servicesSection').show();
+                        },
+                        error: function() {
+                            alert('Error fetching namespace data.');
+                        }
+                    });
+                } else {
+                    // Hide the sections if no namespace is selected
+                    $('#deploymentsSection').hide();
+                    $('#podsSection').hide();
+                    $('#servicesSection').hide();
+                }
+            });
         });
     </script>
 </body>
