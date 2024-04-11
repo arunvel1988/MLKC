@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deploy Helm Chart</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        input[type="submit"] {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #ff0000;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading-spinner i {
+            font-size: 24px;
+            color: #007bff;
+            animation: spin 1s infinite linear;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            z-index: 9999;
+        }
+
+        .popup p {
+            margin-bottom: 10px;
+        }
+
+        .popup button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .releases-table {
+            margin-top: 30px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .releases-table th,
+        .releases-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .releases-table th {
+            background-color: #f2f2f2;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+
+        .delete-button {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Deploy Helm Chart</h1>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    {% if message %}
+        <p class="success">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <label for="deployment_method">Deployment Method:</label>
+        <select id="deployment_method" name="deployment_method" onchange="toggleFields()">
+            <option value="repository">Via Repository</option>
+            <option value="tgz">Via .tgz File</option>
+        </select>
+
+        <div id="repository_fields">
+            <label for="repo_name">Repository Name:</label>
+            <input type="text" id="repo_name" name="repo_name" placeholder="Enter repository name">
+
+            <label for="chart_repo">Chart Repository:</label>
+            <input type="text" id="chart_repo" name="chart_repo" placeholder="Enter chart repository URL">
+
+            <label for="chart_name">Chart Name:</label>
+            <input type="text" id="chart_name" name="chart_name" placeholder="Enter chart name">
+
+            <label for="chart_version">Chart Version:</label>
+            <input type="text" id="chart_version" name="chart_version" placeholder="Enter chart version">
+
+            <label for="release_name">Release Name:</label>
+            <input type="text" id="release_name" name="release_name" placeholder="Enter release name">
+        </div>
+
+        <div id="tgz_fields" style="display: none;">
+            <label for="chart_file">Upload Packaged Helm Chart:</label>
+            <input type="file" id="chart_file" name="chart_file" accept=".tgz">
+
+            <label for="release_name_tgz">Release Name:</label>
+            <input type="text" id="release_name_tgz" name="release_name_tgz" placeholder="Enter release name">
+        </div>
+
+        <input type="submit" value="Deploy">
+    </form>
+
+    <div class="loading-spinner" id="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+    </div>
+
+    <div class="popup" id="success-popup">
+        <p>Helm chart deployed successfully!</p>
+        <button onclick="closePopup()">Close</button>
+    </div>
+
+    <div class="releases-table" id="releases-table" style="display: none;">
+        <h2>Helm Releases</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Namespace</th>
+                    <th>Revision</th>
+                    <th>Status</th>
+                    <th>Chart</th>
+                    <th>App Version</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="releases-body"></tbody>
+        </table>
+    </div>
+
+    <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="back-button">Back to Cluster</a>
+
+    <script>
+        function toggleFields() {
+            var deploymentMethod = document.getElementById('deployment_method').value;
+            var repositoryFields = document.getElementById('repository_fields');
+            var tgzFields = document.getElementById('tgz_fields');
+
+            if (deploymentMethod === 'repository') {
+                repositoryFields.style.display = 'block';
+                tgzFields.style.display = 'none';
+            } else if (deploymentMethod === 'tgz') {
+                repositoryFields.style.display = 'none';
+                tgzFields.style.display = 'block';
+            }
+        }
+
+        function showLoadingSpinner() {
+            var loadingSpinner = document.getElementById('loading-spinner');
+            loadingSpinner.style.display = 'block';
+        }
+
+        function hideLoadingSpinner() {
+            var loadingSpinner = document.getElementById('loading-spinner');
+            loadingSpinner.style.display = 'none';
+        }
+
+        function showSuccessPopup() {
+            var successPopup = document.getElementById('success-popup');
+            successPopup.style.display = 'block';
+        }
+
+        function closePopup() {
+            var successPopup = document.getElementById('success-popup');
+            successPopup.style.display = 'none';
+        }
+
+        function deleteHelmRelease(releaseName) {
+            if (confirm(`Are you sure you want to delete the release "${releaseName}"?`)) {
+                // Make an API call to delete the Helm release
+                fetch(`/delete_helm_release/${releaseName}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the Helm releases table
+                            fetchHelmReleases();
+                        } else {
+                            alert('Failed to delete the Helm release.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting Helm release:', error);
+                        alert('An error occurred while deleting the Helm release.');
+                    });
+            }
+        }
+
+        function fetchHelmReleases() {
+            // Make an API call to fetch the Helm releases
+            fetch('/helm_releases')
+                .then(response => response.json())
+                .then(data => {
+                    var releasesTable = document.getElementById('releases-table');
+                    var releasesBody = document.getElementById('releases-body');
+
+                    if (data.length > 0) {
+                        releasesTable.style.display = 'block';
+
+                        // Clear existing table rows
+                        releasesBody.innerHTML = '';
+
+                        // Populate the table with Helm releases
+                        data.forEach(release => {
+                            var row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${release.name}</td>
+                                <td>${release.namespace}</td>
+                                <td>${release.revision}</td>
+                                <td>${release.status}</td>
+                                <td>${release.chart}</td>
+                                <td>${release.app_version}</td>
+                                <td><button class="delete-button" onclick="deleteHelmRelease('${release.name}')">Delete</button></td>
+                            `;
+                            releasesBody.appendChild(row);
+                        });
+                    } else {
+                        releasesTable.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching Helm releases:', error);
+                });
+        }
+
+        // Show loading spinner when form is submitted
+        document.querySelector('form').addEventListener('submit', function() {
+            showLoadingSpinner();
+        });
+
+        // Hide loading spinner and show success popup when form submission is complete
+        document.querySelector('form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var form = event.target;
+            var formData = new FormData(form);
+
+            fetch(form.action, {
+                method: form.method,
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoadingSpinner();
+                if (data.success) {
+                    showSuccessPopup();
+                    fetchHelmReleases();
+                } else {
+                    alert('Failed to deploy the Helm chart.');
+                }
+            })
+            .catch(error => {
+                hideLoadingSpinner();
+                console.error('Error deploying Helm chart:', error);
+                alert('An error occurred while deploying the Helm chart.');
+            });
+        });
+
+        // Fetch Helm releases on page load
+        fetchHelmReleases();
+    </script>
+</body>
+</html>
