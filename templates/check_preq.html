@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prerequisites Check</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        table {
+            width: 100%;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #333;
+            color: #fff;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .install-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .install-link:hover {
+            text-decoration: underline;
+        }
+        
+        .back-button {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .loading-spinner {
+            display: none;
+            margin: 20px auto;
+            width: 40px;
+            height: 40px;
+            border: 5px solid #ccc;
+            border-top-color: #333;
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .popup p {
+            margin-bottom: 10px;
+        }
+        
+        .popup .loading-spinner {
+            display: inline-block;
+            margin: 10px auto;
+        }
+
+        .back-button {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .back-button a {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #ff9800;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-button a:hover {
+            background-color: #f57c00;
+        }
+        
+        .back-button a:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.5);
+        }
+        
+        .back-button a:active {
+            background-color: #e65100;
+        }
+
+        .install-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .install-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .install-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+        }
+        
+        .install-button:active {
+            background-color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prerequisites Check</h1>
+
+        <table>
+            <tr>
+                <th>Tool</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Docker</td>
+                <td>
+                    {% if docker_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('docker')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>kubectl</td>
+                <td>
+                    {% if kubectl_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('kubectl')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Kind</td>
+                <td>
+                    {% if kind_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('kind')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Helm</td>
+                <td>
+                    {% if helm_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('helm')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Python3</td>
+                <td>
+                    {% if python3_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('python3')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+
+        <div class="github-link" style="text-align: center; margin-top: 20px;">
+            <a href="https://github.com/arunvel1988/kind_kubernetes_web_ui" target="_blank">GitHub</a>
+        </div>
+
+        <div class="back-button">
+            <a href="{{ url_for('index') }}">Back</a>
+        </div>
+    </div>
+
+    <div class="popup" id="install-popup">
+        <p id="install-message"></p>
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script>
+        function showInstallPrompt(tool) {
+            if (confirm(`${tool} is not installed. Do you want to install it?`)) {
+                var popup = document.getElementById('install-popup');
+                var installMessage = document.getElementById('install-message');
+                installMessage.textContent = `Installing ${tool}...`;
+                popup.style.display = 'block';
+
+                // Send a POST request to the server to install the tool
+                fetch('/install_tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `tool=${tool}`
+                })
+                .then(response => {
+                    // Hide the popup and reload the page after installation
+                    popup.style.display = 'none';
+                    location.reload();
+                });
+            }
+        }
+    </script>
+</body>
+</html>

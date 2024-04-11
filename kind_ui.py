@@ -6,6 +6,7 @@ import json
 import threading
 
 
+
 app = Flask(__name__)
 
 # Create a SQLite database to store cluster details
@@ -88,6 +89,9 @@ def create_cluster():
             return render_template('create_cluster.html', error=error)
 
     return render_template('create_cluster.html')
+
+
+
 
 @app.route('/delete_cluster', methods=['POST'])
 def delete_cluster():
@@ -273,6 +277,81 @@ def port_forward(cluster_name):
 def cluster_created():
     name = request.args.get('name')
     return render_template('cluster_created.html', name=name)
+
+
+
+@app.route('/check_preq')
+def check_preq():
+    # Check if Docker is installed
+    try:
+        docker_output = subprocess.check_output(['docker', '--version']).decode('utf-8').strip()
+        docker_installed = True
+    except subprocess.CalledProcessError:
+        docker_installed = False
+        docker_output = 'Docker is not installed'
+
+    # Check if kubectl is installed
+    try:
+        kubectl_output = subprocess.check_output(['kubectl', 'version']).decode('utf-8').strip()
+        kubectl_installed = True
+    except FileNotFoundError:
+        kubectl_installed = False
+        kubectl_output = 'kubectl is not installed'
+
+    # Check if Kind is installed
+    try:
+        kind_output = subprocess.check_output(['kind', 'version']).decode('utf-8').strip()
+        kind_installed = True
+    except FileNotFoundError:
+        kind_installed = False
+        kind_output = 'Kind is not installed'
+
+    # Check if Helm is installed
+    try:
+        helm_output = subprocess.check_output(['helm', 'version']).decode('utf-8').strip()
+        helm_installed = True
+    except subprocess.CalledProcessError:
+        helm_installed = False
+        helm_output = 'Helm is not installed'
+
+    # Check if Python3 is installed
+    try:
+        python3_output = subprocess.check_output(['python3', '--version']).decode('utf-8').strip()
+        python3_installed = True
+    except FileNotFoundError:
+        python3_installed = False
+        python3_output = 'Python3 is not installed'
+
+    return render_template('check_preq.html', docker_installed=docker_installed, docker_output=docker_output,
+                           kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
+                           kind_installed=kind_installed, kind_output=kind_output,
+                           helm_installed=helm_installed, helm_output=helm_output,
+                           python3_installed=python3_installed, python3_output=python3_output)
+
+
+@app.route('/install_tool', methods=['POST'])
+def install_tool():
+    tool = request.form['tool']
+
+    if tool == 'docker':
+        subprocess.run(['chmod', '+x', './scripts/install_docker.sh'])
+        subprocess.run(['./scripts/install_docker.sh'])  # Modify the path as necessary
+    elif tool == 'kubectl':
+        subprocess.run(['chmod', '+x', './scripts/install_kubectl.sh'])
+        subprocess.run(['./scripts/install_kubectl.sh'])
+    elif tool == 'kind':
+        subprocess.run(['chmod', '+x', './scripts/install_kind.sh'])
+        subprocess.run(['./scripts/install_kind.sh'])  # Modify the path as necessary
+    elif tool == 'helm':
+        subprocess.run(['chmod', '+x', './scripts/install_helm.sh'])
+        subprocess.run(['./scripts/install_helm.sh'])  # Modify the path as necessary
+    elif tool == 'python3':
+        subprocess.run(['chmod', '+x', './scripts/install_python.sh'])
+        subprocess.run(['./scripts/install_python3.sh'])  # Modify the path as necessary
+
+    return redirect(url_for('check_preq'))
+
+
 
 if __name__ == '__main__':
     create_database()
