@@ -171,7 +171,7 @@
 
             <div class="text-center mt-4">
                 <a href="{{ url_for('upload_yaml', cluster_name=name) }}" class="btn btn-primary"><i class="fas fa-upload"></i> Upload YAML</a>
-               
+                <a href="{{ url_for('deploy_helm', cluster_name=name) }}" class="btn btn-primary"><i class="fas fa-upload"></i> HELM </a>
                 <a href="{{ url_for('port_forward', cluster_name=name) }}" class="btn btn-success"><i class="fas fa-share"></i> Port Forward</a>
                 <a href="{{ url_for('list_clusters') }}" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Back to Cluster List</a>
               

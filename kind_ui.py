@@ -4,7 +4,7 @@ import subprocess
 import yaml
 import json
 import threading
-
+import os
 
 
 app = Flask(__name__)
@@ -351,6 +351,89 @@ def install_tool():
 
     return redirect(url_for('check_preq'))
 
+
+@app.route('/deploy_helm/<cluster_name>', methods=['GET', 'POST'])
+def deploy_helm(cluster_name):
+    if request.method == 'POST':
+        deployment_method = request.form.get('deployment_method')
+        
+        if deployment_method == 'repository':
+            # Logic for repository deployment method
+            # (Already provided in your original code)
+            pass
+        
+        elif deployment_method == 'tgz':
+            if 'chart_file' not in request.files:
+                return redirect(url_for('cluster_info', name=cluster_name, error='No file uploaded'))
+            
+            file = request.files['chart_file']
+            if file.filename == '':
+                return redirect(url_for('cluster_info', name=cluster_name, error='No file selected'))
+            
+            release_name_tgz = request.form.get('release_name_tgz')
+            
+            # Save the uploaded packaged Helm chart file to cwd
+            chart_filename = file.filename  # Use the original filename
+            chart_path = os.path.join(os.getcwd(), chart_filename)
+            file.save(chart_path)
+
+            try:
+                context_name = f"kind-{cluster_name}"
+                subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+                
+                # Install the uploaded packaged Helm chart
+                subprocess.run(['helm', 'install', release_name_tgz, chart_path], check=True)
+                
+                return redirect(url_for('cluster_info', name=cluster_name, message='Helm chart deployed successfully'))
+            
+            except subprocess.CalledProcessError as e:
+                error = f"Error deploying Helm chart: {str(e)}"
+                return redirect(url_for('cluster_info', name=cluster_name, error=error))
+    
+    # If the request method is not POST or there's no 'deployment_method' specified
+    return render_template('deploy_helm.html', cluster_name=cluster_name)
+
+
+@app.route('/helm_releases')
+def helm_releases():
+    try:
+        # Execute the 'helm ls' command and capture the output
+        output = subprocess.check_output(['helm', 'ls', '-o', 'json'])
+        
+        # Parse the JSON output
+        releases = json.loads(output)
+        
+        # Extract the relevant details from each release
+        release_data = []
+        for release in releases:
+            release_info = {
+                'name': release['name'],
+                'namespace': release['namespace'],
+                'revision': release['revision'],
+                'status': release['status'],
+                'chart': release['chart'],
+                'app_version': release['app_version']
+            }
+            release_data.append(release_info)
+        
+        return jsonify(release_data)
+    
+    except subprocess.CalledProcessError as e:
+        error = f"Error fetching Helm releases: {str(e)}"
+        return jsonify({'error': error}), 500
+
+
+@app.route('/delete_helm_release/<release_name>', methods=['DELETE'])
+def delete_helm_release(release_name):
+    try:
+        # Execute the 'helm uninstall' command to delete the release
+        subprocess.run(['helm', 'uninstall', release_name], check=True)
+        
+        return jsonify({'success': True})
+    
+    except subprocess.CalledProcessError as e:
+        error = f"Error deleting Helm release: {str(e)}"
+        return jsonify({'success': False, 'error': error}), 500
 
 
 if __name__ == '__main__':
