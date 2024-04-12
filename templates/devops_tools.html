@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Install DevOps Tools</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .tool-card {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.3s ease;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .tool-icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-right: 20px;
+        }
+
+        .tool-info {
+            flex-grow: 1;
+        }
+
+        .tool-info h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .tool-info p {
+            margin: 5px 0;
+            color: #777;
+        }
+
+        .install-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .install-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Install DevOps Tools</h1>
+
+    <div class="tool-card">
+        <div class="tool-icon">
+            <i class="fas fa-cogs"></i>
+        </div>
+        <div class="tool-info">
+            <h3>Continuous Integration (CI)</h3>
+            <p>Install Tekton for continuous integration.</p>
+        </div>
+        <button class="install-btn" onclick="installTool('ci')">Install</button>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon">
+            <i class="fas fa-rocket"></i>
+        </div>
+        <div class="tool-info">
+            <h3>Continuous Deployment (CD)</h3>
+            <p>Install ArgoCD for continuous deployment.</p>
+        </div>
+        <button class="install-btn" onclick="installTool('cd')">Install</button>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="tool-info">
+            <h3>Monitoring</h3>
+            <p>Install Prometheus and Grafana for monitoring.</p>
+        </div>
+        <button class="install-btn" onclick="installTool('monitoring')">Install</button>
+    </div>
+
+    <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="back-button">Back to Cluster</a>
+
+    <script>
+        function installTool(tool) {
+            fetch('/devops_tools/{{ cluster_name }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `tool=${tool}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Error installing tool: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error installing tool:', error);
+                alert('An error occurred while installing the tool.');
+            });
+        }
+    </script>
+</body>
+</html>
