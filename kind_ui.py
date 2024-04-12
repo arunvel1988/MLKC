@@ -251,12 +251,15 @@ def upload_yaml(cluster_name):
     return render_template('upload_yaml.html', cluster_name=cluster_name)
 
 
-def port_forward_thread(service_name, host_port, container_port):
-    subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}'], check=True)
+
+
+def port_forward_thread(namespace, service_name, host_port, container_port):
+    subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}', '-n', namespace], check=True)
 
 @app.route('/port_forward/<cluster_name>', methods=['GET', 'POST'])
 def port_forward(cluster_name):
     if request.method == 'POST':
+        namespace = request.form['namespace']
         service_name = request.form['service_name']
         container_port = request.form['container_port']
         host_port = request.form['host_port']
@@ -264,7 +267,7 @@ def port_forward(cluster_name):
         try:
             context_name = f"kind-{cluster_name}"
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-            threading.Thread(target=port_forward_thread, args=(service_name, host_port, container_port)).start()
+            threading.Thread(target=port_forward_thread, args=(namespace, service_name, host_port, container_port)).start()
             message = f'http://localhost:{host_port}'
             return render_template('port_forward.html', cluster_name=cluster_name, message=message)
         except subprocess.CalledProcessError as e:
@@ -292,7 +295,7 @@ def check_preq():
 
     # Check if kubectl is installed
     try:
-        kubectl_output = subprocess.check_output(['kubectl', 'version']).decode('utf-8').strip()
+        kubectl_output = subprocess.check_output(['kubectl']).decode('utf-8').strip()
         kubectl_installed = True
     except FileNotFoundError:
         kubectl_installed = False
@@ -437,6 +440,57 @@ def delete_helm_release(release_name):
     except subprocess.CalledProcessError as e:
         error = f"Error deleting Helm release: {str(e)}"
         return jsonify({'success': False, 'error': error}), 500
+
+
+
+
+
+@app.route('/devops_tools/<cluster_name>', methods=['GET', 'POST'])
+def devops_tools(cluster_name):
+    if request.method == 'POST':
+        selected_tool = request.form.get('tool')
+
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+
+            if selected_tool == 'ci':
+                # Install Tekton for CI
+                subprocess.run(['chmod', '+x', './scripts/install_tekton.sh'], check=True)
+                process = subprocess.Popen(['./scripts/install_tekton.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                if process.returncode != 0:
+                    error = f"Error executing install_tekton.sh script. Return code: {process.returncode}\n"
+                    error += f"stdout: {stdout.decode('utf-8')}\n"
+                    error += f"stderr: {stderr.decode('utf-8')}"
+                    print(error)  # Print the error for logging purposes
+                    return jsonify({'success': False, 'error': error})
+                return jsonify({'success': True, 'message': 'Tekton installed successfully'})
+
+            elif selected_tool == 'cd':
+                # Install ArgoCD for CD
+                subprocess.run(['kubectl', 'create', 'namespace', 'argocd'], check=True)
+                subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
+                return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
+
+            elif selected_tool == 'monitoring':
+                # Install Prometheus and Grafana for monitoring
+                subprocess.run(['kubectl', 'create', 'namespace', 'monitoring'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'prometheus-community', 'https://prometheus-community.github.io/helm-charts'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/prometheus', '--namespace', 'monitoring'], check=True)
+                subprocess.run(['helm', 'install', 'grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
+                return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+
+        except subprocess.CalledProcessError as e:
+            error = f"Error installing tool: {str(e)}"
+            print(error)  # Print the error for logging purposes
+            return jsonify({'success': False, 'error': error})
+
+    return render_template('devops_tools.html', cluster_name=cluster_name)
 
 
 if __name__ == '__main__':
