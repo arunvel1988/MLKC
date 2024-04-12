@@ -356,62 +356,46 @@ def install_tool():
 def deploy_helm(cluster_name):
     if request.method == 'POST':
         deployment_method = request.form.get('deployment_method')
-        
         if deployment_method == 'repository':
             repo_name = request.form.get('repo_name')
             chart_repo = request.form.get('chart_repo')
             chart_name = request.form.get('chart_name')
             chart_version = request.form.get('chart_version')
             release_name = request.form.get('release_name')
-            
             try:
                 context_name = f"kind-{cluster_name}"
                 subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-                
                 # Add the Helm chart repository
                 subprocess.run(['helm', 'repo', 'add', repo_name, chart_repo], check=True)
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                
                 # Install the Helm chart from the repository
                 subprocess.run(['helm', 'install', release_name, f'{repo_name}/{chart_name}', '--version', chart_version], check=True)
-                
-                return redirect(url_for('cluster_info', name=cluster_name, message='Helm chart deployed successfully'))
-            
+                return jsonify({'success': True, 'message': 'Helm chart deployed successfully'})
             except subprocess.CalledProcessError as e:
                 error = f"Error deploying Helm chart: {str(e)}"
-                return redirect(url_for('cluster_info', name=cluster_name, error=error))
-        
+                return jsonify({'success': False, 'error': error})
         elif deployment_method == 'tgz':
             if 'chart_file' not in request.files:
-                return redirect(url_for('cluster_info', name=cluster_name, error='No file uploaded'))
-            
+                return jsonify({'success': False, 'error': 'No file uploaded'})
             file = request.files['chart_file']
             if file.filename == '':
-                return redirect(url_for('cluster_info', name=cluster_name, error='No file selected'))
-            
+                return jsonify({'success': False, 'error': 'No file selected'})
             release_name_tgz = request.form.get('release_name_tgz')
-            
             # Save the uploaded packaged Helm chart file to cwd
             chart_filename = file.filename  # Use the original filename
             chart_path = os.path.join(os.getcwd(), chart_filename)
             file.save(chart_path)
-
             try:
                 context_name = f"kind-{cluster_name}"
                 subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-                
                 # Install the uploaded packaged Helm chart
                 subprocess.run(['helm', 'install', release_name_tgz, chart_path], check=True)
-                
-                return redirect(url_for('cluster_info', name=cluster_name, message='Helm chart deployed successfully'))
-            
+                return jsonify({'success': True, 'message': 'Helm chart deployed successfully'})
             except subprocess.CalledProcessError as e:
                 error = f"Error deploying Helm chart: {str(e)}"
-                return redirect(url_for('cluster_info', name=cluster_name, error=error))
-    
+                return jsonify({'success': False, 'error': error})
     # If the request method is not POST or there's no 'deployment_method' specified
     return render_template('deploy_helm.html', cluster_name=cluster_name)
-
 
 @app.route('/helm_releases')
 def helm_releases():
