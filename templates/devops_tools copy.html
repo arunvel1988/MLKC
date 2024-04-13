@@ -23,14 +23,14 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             padding: 20px;
             margin-right: 10px;
-            width: 300px; /* Set width for each tool card */
+            width: 300px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             transition: transform 0.3s ease;
             position: relative;
-            overflow: hidden; /* Prevent spinner overflow */
+            overflow: hidden;
         }
 
         .tool-card:hover {
@@ -57,24 +57,24 @@
             color: #777;
         }
 
-        .install-btn, .delete-btn, .password-btn {
-            background-color: #4CAF50; /* Green color */
+        .install-btn, .delete-btn {
+            background-color: #4CAF50;
             color: white;
             border: none;
             padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s ease;
-            margin-top: 10px; /* Add margin to separate buttons */
+            margin-top: 10px;
         }
 
-        .install-btn:hover, .delete-btn:hover, .password-btn:hover {
+        .install-btn:hover, .delete-btn:hover {
             background-color: #45a049;
         }
 
         .delete-btn {
-            background-color: #dc3545; /* Red color */
-            margin-left: 10px; /* Add margin between install and delete buttons */
+            background-color: #dc3545;
+            margin-left: 10px;
         }
 
         .tools-container {
@@ -109,7 +109,6 @@
             margin-top: 10px;
         }
 
-        /* Added styles for spinner container */
         .spinner-container {
             position: relative;
             width: 100%;
@@ -129,8 +128,8 @@
                 <h3>Continuous Integration (CI)</h3>
                 <p>Install Tekton for continuous integration.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="ci-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="ci-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
@@ -148,8 +147,8 @@
                 <h3>Continuous Deployment (CD)</h3>
                 <p>Install ArgoCD for continuous deployment.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="cd-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="cd-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
@@ -157,7 +156,6 @@
                 <button class="install-btn" onclick="installTool('cd')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('cd')">Delete</button>
             </div>
-            
         </div>
 
         <div class="tool-card">
@@ -168,16 +166,14 @@
                 <h3>Monitoring</h3>
                 <p>Install Prometheus and Grafana for monitoring.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="monitoring-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="monitoring-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
             <div>
                 <button class="install-btn" onclick="installTool('monitoring')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('monitoring')">Delete</button>
-                <!-- Button to fetch Grafana password -->
-                <button class="password-btn" onclick="fetchGrafanaPassword()">Grafana Password</button>
             </div>
         </div>
     </div>
@@ -188,9 +184,7 @@
 
     <script>
         function installTool(tool) {
-            // Show spinner for the corresponding tool
             document.getElementById(`${tool}-spinner`).style.display = 'block';
-            // Hide message
             document.getElementById('message').style.display = 'none';
 
             fetch('/devops_tools/{{ cluster_name }}', {
@@ -202,9 +196,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                // Hide spinner
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
                 document.getElementById('message').style.display = 'block';
                 document.getElementById('message').innerHTML = data.message;
                 if (data.success) {
@@ -219,9 +211,7 @@
             })
             .catch(error => {
                 console.error('Error installing tool:', error);
-                // Hide spinner
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
                 document.getElementById('message').style.display = 'block';
                 document.getElementById('message').innerHTML = 'An error occurred while installing the tool.';
                 alert('An error occurred while installing the tool.');
@@ -230,9 +220,7 @@
 
         function deleteTool(tool) {
             if (confirm(`Are you sure you want to delete ${tool.toUpperCase()}?`)) {
-                // Show spinner for the corresponding tool
                 document.getElementById(`${tool}-spinner`).style.display = 'block';
-                // Hide message
                 document.getElementById('message').style.display = 'none';
 
                 fetch('/devops_tools/{{ cluster_name }}', {
@@ -244,9 +232,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Hide spinner
                     document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
                     document.getElementById('message').style.display = 'block';
                     document.getElementById('message').innerHTML = data.message;
                     if (data.success) {
@@ -257,27 +243,12 @@
                 })
                 .catch(error => {
                     console.error('Error deleting tool:', error);
-                    // Hide spinner
                     document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
                     document.getElementById('message').style.display = 'block';
                     document.getElementById('message').innerHTML = 'An error occurred while deleting the tool.';
                     alert('An error occurred while deleting the tool.');
                 });
             }
-        }
-
-        // Function to fetch Grafana password
-        function fetchGrafanaPassword() {
-            fetch('/get_grafana_password')
-            .then(response => response.json())
-            .then(data => {
-                alert('Grafana admin password: ' + data.password);
-            })
-            .catch(error => {
-                console.error('Error fetching Grafana password:', error);
-                alert('Error fetching Grafana password.');
-            });
         }
     </script>
 </body>

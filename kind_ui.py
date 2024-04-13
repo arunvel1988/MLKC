@@ -5,6 +5,8 @@ import yaml
 import json
 import threading
 import os
+import base64
+from kubernetes import client, config
 
 
 app = Flask(__name__)
@@ -226,6 +228,35 @@ def namespace_data():
         'services': services_html
     })
 
+
+
+
+
+@app.route('/get_grafana_password', methods=['GET'])
+def get_grafana_secret():
+    try:
+        # Run the kubectl command to get the Grafana secret
+        result = subprocess.run(['kubectl', 'get', 'secret', '--namespace', 'monitoring', 'my-grafana', '-o', 'json'],
+                                capture_output=True, check=True, text=True)
+        secret_json = json.loads(result.stdout)
+        encoded_password = secret_json['data']['admin-password']
+        # Decode the base64-encoded password
+        decoded_password = base64.b64decode(encoded_password).decode('utf-8')
+        return jsonify({'success': True, 'password': decoded_password})
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error retrieving Grafana secret: {str(e)}"
+        return jsonify({'success': False, 'error': error_message})
+
+
+
+
+
+@app.route('/get_services', methods=['GET'])
+def get_services():
+    namespace = request.args.get('namespace')
+    services = get_services(namespace)
+    return jsonify({'services': services})
+
 @app.route('/upload_yaml/<cluster_name>', methods=['GET', 'POST'])
 def upload_yaml(cluster_name):
     if request.method == 'POST':
@@ -253,8 +284,34 @@ def upload_yaml(cluster_name):
 
 
 
+
+def get_namespaces():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'namespaces', '-o', 'json'], capture_output=True, check=True, text=True)
+        namespaces_json = json.loads(result.stdout)
+        namespaces = [item['metadata']['name'] for item in namespaces_json['items']]
+        return namespaces
+    except subprocess.CalledProcessError as e:
+        print(f"Error retrieving namespaces: {str(e)}")
+        return []
+
+def get_services(namespace):
+    try:
+        result = subprocess.run(['kubectl', 'get', 'services', '-n', namespace, '-o', 'json'], capture_output=True, check=True, text=True)
+        services_json = json.loads(result.stdout)
+        services = [item['metadata']['name'] for item in services_json['items']]
+        return services
+    except subprocess.CalledProcessError as e:
+        print(f"Error retrieving services: {str(e)}")
+        return []
+
+
+
 def port_forward_thread(namespace, service_name, host_port, container_port):
-    subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}', '-n', namespace], check=True)
+    try:
+        subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}', '-n', namespace], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error during port forwarding: {str(e)}")
 
 @app.route('/port_forward/<cluster_name>', methods=['GET', 'POST'])
 def port_forward(cluster_name):
@@ -269,12 +326,14 @@ def port_forward(cluster_name):
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
             threading.Thread(target=port_forward_thread, args=(namespace, service_name, host_port, container_port)).start()
             message = f'http://localhost:{host_port}'
-            return render_template('port_forward.html', cluster_name=cluster_name, message=message)
+            return render_template('port_forward.html', cluster_name=cluster_name, message=message, namespaces=get_namespaces(), selected_namespace=namespace, services=get_services(namespace))
         except subprocess.CalledProcessError as e:
             error = f"Error during port forwarding: {str(e)}"
             return redirect(url_for('cluster_info', name=cluster_name, error=error))
 
-    return render_template('port_forward.html', cluster_name=cluster_name)
+    return render_template('port_forward.html', cluster_name=cluster_name, namespaces=get_namespaces(), selected_namespace=None, services=[])
+
+
 
 @app.route('/cluster_created')
 def cluster_created():
@@ -445,17 +504,18 @@ def delete_helm_release(release_name):
 
 
 
-@app.route('/devops_tools/<cluster_name>', methods=['GET', 'POST'])
+
+@app.route('/devops_tools/<cluster_name>', methods=['GET', 'POST', 'DELETE'])
 def devops_tools(cluster_name):
     if request.method == 'POST':
         selected_tool = request.form.get('tool')
-
         try:
             context_name = f"kind-{cluster_name}"
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-
             if selected_tool == 'ci':
                 # Install Tekton for CI
+                if is_tekton_installed():
+                    return jsonify({'success': True, 'message': 'Tekton is already installed'})
                 subprocess.run(['chmod', '+x', './scripts/install_tekton.sh'], check=True)
                 process = subprocess.Popen(['./scripts/install_tekton.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 stdout, stderr = process.communicate()
@@ -466,31 +526,150 @@ def devops_tools(cluster_name):
                     print(error)  # Print the error for logging purposes
                     return jsonify({'success': False, 'error': error})
                 return jsonify({'success': True, 'message': 'Tekton installed successfully'})
-
             elif selected_tool == 'cd':
                 # Install ArgoCD for CD
+                if is_argocd_installed():
+                    return jsonify({'success': True, 'message': 'Argocd is already installed'})
                 subprocess.run(['kubectl', 'create', 'namespace', 'argocd'], check=True)
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
-
             elif selected_tool == 'monitoring':
                 # Install Prometheus and Grafana for monitoring
                 subprocess.run(['kubectl', 'create', 'namespace', 'monitoring'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'prometheus-community', 'https://prometheus-community.github.io/helm-charts'], check=True)
+                
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/prometheus', '--namespace', 'monitoring'], check=True)
-                subprocess.run(['helm', 'install', 'grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
-                return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+                subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/kube-prometheus-stack', '--namespace', 'monitoring'], check=True)
 
+                
+                subprocess.run(['helm', 'install', 'my-grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
+                return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
             else:
                 return jsonify({'success': False, 'error': 'Invalid tool selected'})
-
         except subprocess.CalledProcessError as e:
             error = f"Error installing tool: {str(e)}"
             print(error)  # Print the error for logging purposes
             return jsonify({'success': False, 'error': error})
 
-    return render_template('devops_tools.html', cluster_name=cluster_name)
+    elif request.method == 'DELETE':
+        selected_tool = request.form.get('tool')
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'ci':
+                # Delete Tekton for CI
+                if not is_tekton_installed():
+                    return jsonify({'success': True, 'message': 'Tekton is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'tekton-pipelines', 'tekton-pipelines-resolvers'], check=True)
+
+                return jsonify({'success': True, 'message': 'Tekton deleted successfully'})
+            elif selected_tool == 'cd':
+                # Delete ArgoCD for CD
+                if not is_argocd_installed():
+                    return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
+                return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+            elif selected_tool == 'monitoring':
+                # Delete ArgoCD for CD
+                if not is_monitoring_installed():
+                    return jsonify({'success': True, 'message': 'Monitoring is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'monitoring'], check=True)
+                return jsonify({'success': True, 'message': 'Monitoring deleted successfully'})
+
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+            
+
+        except subprocess.CalledProcessError as e:
+            error = f"Error deleting tool: {str(e)}"
+            print(error)  # Print the error for logging purposes
+            return jsonify({'success': False, 'error': error})
+
+    else:
+        return render_template('devops_tools.html', cluster_name=cluster_name)
+
+def is_tekton_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'tekton-pipelines', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+
+
+def is_argocd_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'argocd', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+
+def is_monitoring_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'monitoring', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+
+@app.route('/get_pods', methods=['POST'])
+def get_pods():
+    if request.method == 'POST':
+        try:
+            namespace = request.json['namespace']
+            pods = get_pods(namespace)
+            return jsonify({'pods': pods})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'Method not allowed'}), 405
+
+
+
+
+
+
+# Load Kubernetes configuration
+config.load_kube_config()
+
+# Function to get namespaces
+def get_namespaces():
+    v1 = client.CoreV1Api()
+    namespaces = v1.list_namespace().items
+    return [ns.metadata.name for ns in namespaces]
+
+# Function to get pods in a namespace
+def get_pods(namespace):
+    v1 = client.CoreV1Api()
+    pods = v1.list_namespaced_pod(namespace).items
+    return [pod.metadata.name for pod in pods]
+
+# Function to fetch logs for a pod
+def get_pod_logs(namespace, pod_name):
+    v1 = client.CoreV1Api()
+    logs = v1.read_namespaced_pod_log(pod_name, namespace)
+    return logs
+
+@app.route('/logs', methods=['GET', 'POST'])
+def logs():
+    if request.method == 'POST':
+        namespace = request.form['namespace']
+        pod_name = request.form['pod_name']
+        logs = get_pod_logs(namespace, pod_name)
+        return jsonify({'logs': logs})
+    else:
+        namespaces = get_namespaces()
+        return render_template('logs.html', namespaces=namespaces)
+
+
+
 
 
 if __name__ == '__main__':
