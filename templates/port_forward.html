@@ -2,38 +2,140 @@
 <html>
 <head>
     <title>Port Forward</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .btn-success {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-success:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #5a6268;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-success a {
+            color: #155724;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="mt-5">
             <h1>Port Forward for Cluster: {{ cluster_name }}</h1>
-            <form method="post">
-                <div class="form-group">
-                    <label for="service_name">Service Name:</label>
-                    <input type="text" class="form-control" id="service_name" name="service_name" required>
-                </div>
-                <div class="form-group">
-                    <label for="container_port">Container Port:</label>
-                    <input type="text" class="form-control" id="container_port" name="container_port" required>
-                </div>
-                <div class="form-group">
-                    <label for="host_port">Host Port:</label>
-                    <input type="text" class="form-control" id="host_port" name="host_port" required>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <button type="submit" class="btn btn-success">Port Forward</button>
-                    <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="btn btn-secondary">Back</a>
-                </div>
-            </form>
-            
+            <div class="form-container">
+                <form method="post">
+                    <div class="form-group">
+                        <label for="namespace">Namespace:</label>
+                        <select class="form-control" id="namespace" name="namespace">
+                            {% for ns in namespaces %}
+                            <option value="{{ ns }}">{{ ns }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="service_name">Service Name:</label>
+                        <select class="form-control" id="service_name" name="service_name">
+                            <!-- Options will be populated dynamically based on selected namespace -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="container_port">Container Port:</label>
+                        <input type="text" class="form-control" id="container_port" name="container_port" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="host_port">Host Port:</label>
+                        <input type="text" class="form-control" id="host_port" name="host_port" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-success">Port Forward</button>
+                        <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="btn btn-secondary">Back</a>
+                    </div>
+                </form>
+            </div>
             {% if message %}
             <div class="alert alert-success mt-3" role="alert">
                 <a href="{{ message }}">{{ message }}</a>
             </div>
             {% endif %}
-
         </div>
     </div>
+
+    <script>
+        // Function to populate service dropdown based on selected namespace
+        document.getElementById('namespace').addEventListener('change', function() {
+            var selectedNamespace = this.value;
+            var serviceDropdown = document.getElementById('service_name');
+            serviceDropdown.innerHTML = ''; // Clear previous options
+
+            // Add loading option
+            var loadingOption = document.createElement('option');
+            loadingOption.text = 'Loading...';
+            serviceDropdown.add(loadingOption);
+
+            // Fetch services for selected namespace
+            fetch('/get_services?namespace=' + selectedNamespace)
+            .then(response => response.json())
+            .then(data => {
+                serviceDropdown.innerHTML = ''; // Clear loading option
+                // Populate service options
+                data.services.forEach(service => {
+                    var option = document.createElement('option');
+                    option.text = service;
+                    serviceDropdown.add(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching services:', error);
+                // Remove loading option and display error message
+                serviceDropdown.innerHTML = ''; // Clear loading option
+                var errorOption = document.createElement('option');
+                errorOption.text = 'Error fetching services';
+                serviceDropdown.add(errorOption);
+            });
+        });
+    </script>
 </body>
 </html>

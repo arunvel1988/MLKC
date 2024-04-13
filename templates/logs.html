@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pod Logs</title>
+</head>
+<body>
+    <h1>Pod Logs</h1>
+
+    <form id="logsForm">
+        <label for="namespace">Select Namespace:</label>
+        <select id="namespace" name="namespace">
+            {% for ns in namespaces %}
+            <option value="{{ ns }}">{{ ns }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="pod">Select Pod:</label>
+        <select id="pod" name="pod_name">
+            <!-- Options will be populated dynamically based on selected namespace -->
+        </select>
+        <br>
+
+        <button type="submit">Fetch Logs</button>
+        <button type="button" onclick="goBack()">Back</button> <!-- Add back button -->
+    </form>
+
+    <div id="logsContainer">
+        <!-- Logs will be displayed here -->
+    </div>
+
+    <script>
+        document.getElementById('namespace').addEventListener('change', function() {
+            var selectedNamespace = this.value;
+            var podDropdown = document.getElementById('pod');
+            podDropdown.innerHTML = '<option value="">Loading...</option>';
+
+            fetch('/get_pods', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ namespace: selectedNamespace })
+            })
+            .then(response => response.json())
+            .then(data => {
+                podDropdown.innerHTML = '';
+                data.pods.forEach(pod => {
+                    var option = document.createElement('option');
+                    option.text = pod;
+                    podDropdown.add(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching pods:', error);
+                podDropdown.innerHTML = '<option value="">Error fetching pods</option>';
+            });
+        });
+
+        document.getElementById('logsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var selectedNamespace = document.getElementById('namespace').value;
+            var selectedPod = document.getElementById('pod').value;
+
+            fetch('/logs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'namespace=' + selectedNamespace + '&pod_name=' + selectedPod
+            })
+            .then(response => response.json())
+            .then(data => {
+                var logsContainer = document.getElementById('logsContainer');
+                logsContainer.innerHTML = '<pre>' + data.logs + '</pre>';
+            })
+            .catch(error => {
+                console.error('Error fetching logs:', error);
+                var logsContainer = document.getElementById('logsContainer');
+                logsContainer.innerHTML = '<p>Error fetching logs</p>';
+            });
+        });
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

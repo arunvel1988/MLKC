@@ -20,6 +20,8 @@ add_user_to_sudoers() {
     sudo chmod 0440 "$sudoers_file"
 }
 
+
+
 # Install Tekton CLI
 install_tekton_cli() {
     DISTRO=$(detect_linux_distribution)
