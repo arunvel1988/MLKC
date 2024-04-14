@@ -656,6 +656,102 @@ def is_monitoring_installed():
         return False  # Return False if there was an error executing the command
 
 
+
+#################################################################################################
+#        security 
+###################################################################################################
+
+
+@app.route('/security_tools/<cluster_name>', methods=['GET', 'POST', 'DELETE'])
+def security_tools(cluster_name):
+    if request.method == 'POST':
+        selected_tool = request.form.get('tool')
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'kyverno':
+                # Install Kyverno
+                if is_kyverno_installed():
+                    return jsonify({'success': True, 'message': 'Kyverno is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'kyverno'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'kyverno', 'https://kyverno.github.io/kyverno/'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                
+                subprocess.run(['helm', 'install', 'kyverno', 'kyverno/kyverno', '-n','kyverno'], check=True)
+                return jsonify({'success': True, 'message': 'Kyverno installed successfully'})
+            elif selected_tool == 'falco':
+                # Install Falco
+                if is_falco_installed():
+                    return jsonify({'success': True, 'message': 'Falco is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'falco'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'falcosecurity', 'https://falcosecurity.github.io/charts'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                webhook_url_base64 = "aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDA0QUhTRktMTTgvQjA1SzA3NkgyNlMvV2ZHRGQ5MFFDcENwNnFzNmFKNkV0dEg4"
+                webhook_url = base64.b64decode(webhook_url_base64).decode('utf-8')
+                command = [
+                    'helm', 'install', 'falco', '-n', 'falco',
+                    '--set', 'driver.kind=ebpf',
+                    '--set', 'tty=true',
+                    'falcosecurity/falco',
+                    '--set', 'falcosidekick.enabled=true',
+                    f'--set', f'falcosidekick.config.slack.webhookurl={webhook_url}',
+                    '--set', 'falcosidekick.config.slack.minimumpriority=notice',
+                    '--set', 'falcosidekick.config.customfields="user:changeme"'
+                ]
+                subprocess.run(command, check=True)
+                return jsonify({'success': True, 'message': 'Falco installed successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    elif request.method == 'DELETE':
+        selected_tool = request.form.get('tool')
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'kyverno':
+                if not is_kyverno_installed():
+                    return jsonify({'success': True, 'message': 'Kyverno is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
+                return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
+            elif selected_tool == 'falco':
+                if not is_falco_installed():
+                    return jsonify({'success': True, 'message': 'Falco is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'falco'], check=True)
+                return jsonify({'success': True, 'message': 'Falco deleted successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    else:
+        return render_template('security_tools.html', cluster_name=cluster_name)
+
+
+
+def is_kyverno_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kyverno', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_falco_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'falco', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+
+###############################################################################################################
+# end
+###############################################################################################################
+
 @app.route('/get_pods', methods=['POST'])
 def get_pods():
     if request.method == 'POST':
