@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kubernetes Resource Description</title>
+</head>
+<body>
+    <h1>Resource Description</h1>
+    {% if description %}
+        <pre>{{ description | tojson(indent=2) }}</pre>
+    {% else %}
+        <p>No description available</p>
+    {% endif %}
+</body>
+</html>
