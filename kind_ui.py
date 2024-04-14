@@ -765,7 +765,9 @@ def get_pods():
         return jsonify({'error': 'Method not allowed'}), 405
 
 
-
+######################################################################################################
+############# logs
+####################################################################################################
 
 
 
@@ -995,6 +997,125 @@ def delete_secret(namespace, secret_name):
     api_instance.delete_namespaced_secret(secret_name, namespace)
 
 
+##################################################################################################################
+###### DESCRIPTION 
+##################################################################################################################
+
+
+
+
+
+# Load Kubernetes configuration
+config.load_kube_config()
+
+# Function to get namespaces
+def get_namespaces():
+    v1 = client.CoreV1Api()
+    namespaces = v1.list_namespace().items
+    return [ns.metadata.name for ns in namespaces]
+
+# Function to get resources in a namespace based on resource type
+def get_deployments(namespace):
+    api_instance = client.AppsV1Api()
+    deployments = api_instance.list_namespaced_deployment(namespace).items
+    return [deployment.metadata.name for deployment in deployments]
+
+# Function to get ingresses in a namespace
+def get_ingresses(namespace):
+    api_instance = client.CoreV1Api()
+    ingresses = api_instance.list_namespaced_ingress(namespace).items
+    return [ingress.metadata.name for ingress in ingresses]
+
+# Function to get services in a namespace
+def get_services(namespace):
+    api_instance = client.CoreV1Api()
+    services = api_instance.list_namespaced_service(namespace).items
+    return [service.metadata.name for service in services]
+
+# Function to get statefulsets in a namespace
+def get_statefulsets(namespace):
+    api_instance = client.AppsV1Api()
+    statefulsets = api_instance.list_namespaced_stateful_set(namespace).items
+    return [statefulset.metadata.name for statefulset in statefulsets]
+
+# Function to get daemonsets in a namespace
+def get_daemonsets(namespace):
+    api_instance = client.AppsV1Api()
+    daemonsets = api_instance.list_namespaced_daemon_set(namespace).items
+    return [daemonset.metadata.name for daemonset in daemonsets]
+
+# Function to get resources in a namespace based on resource type
+# Function to get resources in a namespace based on resource type
+def get_resources(namespace, resource_type):
+    if resource_type == 'pod':
+        v1 = client.CoreV1Api()
+        resources = v1.list_namespaced_pod(namespace).items
+        return [resource.metadata.name for resource in resources]
+    elif resource_type == 'deployment':
+        return get_deployments(namespace)
+    elif resource_type == 'ingress':
+        return get_ingresses(namespace)
+    elif resource_type == 'service':
+        return get_services(namespace)
+    elif resource_type == 'statefulset':
+        return get_statefulsets(namespace)
+    elif resource_type == 'daemonset':
+        return get_daemonsets(namespace)
+    # Add other resource types as needed
+    else:
+        return []
+
+
+# Route to fetch namespace list using Kubernetes API
+@app.route('/get_namespaces', methods=['GET'])
+def get_namespaces_route():
+    try:
+        namespaces = get_namespaces()
+        return jsonify({'namespaces': namespaces})
+    except Exception as e:
+        print(f"Exception when fetching namespaces: {e}")
+        return jsonify({'error': str(e)})
+
+# Route to fetch resources based on namespace and resource type
+@app.route('/get_resources', methods=['POST'])
+def get_resources_route():
+    try:
+        data = request.json
+        namespace = data.get('namespace')
+        resource_type = data.get('resource_type')
+
+        resource_names = get_resources(namespace, resource_type)
+
+        return jsonify({'resource_names': resource_names})
+    except Exception as e:
+        print(f"Exception when fetching resources: {e}")
+        return jsonify({'error': str(e)})
+
+# Route to render the form
+@app.route('/describe', methods=['GET', 'POST'])
+def describe():
+    if request.method == 'POST':
+        namespace = request.form['namespace']
+        resource_type = request.form['resource_type']
+        resource_name = request.form['resource_name']
+
+        try:
+            # Run the kubectl describe command for the specified resource
+            result = subprocess.run(['kubectl', 'describe', resource_type, resource_name, '-n', namespace], capture_output=True, text=True)
+            description = result.stdout
+        except Exception as e:
+            description = f"Error describing {resource_type}: {e}"
+
+        return render_template('describe.html', description=description)
+    
+    # Add a default return statement for the GET method
+    return render_template('describe.html')
+
+
+
+##################################################################################################################
+###### END
+##################################################################################################################
 
 if __name__ == '__main__':
     create_database()

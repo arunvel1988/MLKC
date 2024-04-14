@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Describe Resource</title>
+</head>
+<body>
+    <h1>Describe Resource</h1>
+
+    <!-- Form for selecting namespace, resource type, and resource name -->
+    <form method="POST">
+        <label for="namespace">Namespace:</label>
+        <select id="namespace" name="namespace">
+            <!-- Namespaces will be populated dynamically -->
+        </select>
+        <br>
+        <label for="resource_type">Resource Type:</label>
+        <select id="resource_type" name="resource_type">
+            <option value="pod">Pod</option>
+            <option value="deployment">Deployment</option>
+            <option value="daemonset">DaemonSet</option>
+            <option value="statefulset">StatefulSet</option>
+            <option value="service">Service</option>
+            <option value="ingress">Ingress</option>
+            <option value="pv">Persistent Volume</option>
+            <option value="pvc">Persistent Volume Claim</option>
+            <!-- Add other resource types as needed -->
+        </select>
+        <br>
+        <label for="resource_name">Resource Name:</label>
+        <select id="resource_name" name="resource_name">
+            <!-- This dropdown will be populated dynamically based on user selections -->
+        </select>
+        <br>
+        <button type="submit">Describe</button>
+    </form>
+
+    <!-- Display the description result -->
+    <div id="description">
+        {% if description %}
+        <pre>{{ description }}</pre>
+        {% endif %}
+    </div>
+
+    <script>
+        // Function to fetch namespaces via AJAX
+        function fetchNamespaces() {
+            fetch('/get_namespaces')
+            .then(response => response.json())
+            .then(data => {
+                const namespaceDropdown = document.getElementById('namespace');
+                namespaceDropdown.innerHTML = '';
+                data.namespaces.forEach(namespace => {
+                    const option = document.createElement('option');
+                    option.value = namespace;
+                    option.textContent = namespace;
+                    namespaceDropdown.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching namespaces:', error));
+        }
+
+        // Function to fetch resources based on selected namespace and resource type
+        function fetchResources() {
+            const namespace = document.getElementById('namespace').value;
+            const resourceType = document.getElementById('resource_type').value;
+            fetch('/get_resources', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ namespace, resource_type: resourceType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resourceDropdown = document.getElementById('resource_name');
+                resourceDropdown.innerHTML = '';
+                data.resource_names.forEach(resource => {
+                    const option = document.createElement('option');
+                    option.value = resource;
+                    option.textContent = resource;
+                    resourceDropdown.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching resources:', error));
+        }
+
+        // Fetch namespaces when the page loads
+        document.addEventListener('DOMContentLoaded', fetchNamespaces);
+
+        // Fetch resources when namespace or resource type changes
+        document.getElementById('namespace').addEventListener('change', fetchResources);
+        document.getElementById('resource_type').addEventListener('change', fetchResources);
+    </script>
+</body>
+</html>
