@@ -251,11 +251,7 @@ def get_grafana_secret():
 
 
 
-@app.route('/get_services', methods=['GET'])
-def get_services():
-    namespace = request.args.get('namespace')
-    services = get_services(namespace)
-    return jsonify({'services': services})
+
 
 @app.route('/upload_yaml/<cluster_name>', methods=['GET', 'POST'])
 def upload_yaml(cluster_name):
@@ -534,6 +530,8 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
             elif selected_tool == 'monitoring':
+                if is_monitoring_installed():
+                    return jsonify({'success': True, 'message': 'Monitoring is already installed'})
                 # Install Prometheus and Grafana for monitoring
                 subprocess.run(['kubectl', 'create', 'namespace', 'monitoring'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'prometheus-community', 'https://prometheus-community.github.io/helm-charts'], check=True)
@@ -544,8 +542,31 @@ def devops_tools(cluster_name):
                 
                 subprocess.run(['helm', 'install', 'my-grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
                 return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+            
+
+            elif selected_tool == 'istio':
+                # Install Istio Service Mesh
+                if is_istio_installed():
+                    return jsonify({'success': True, 'message': 'Istio is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'istio-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'istio', 'https://istio-release.storage.googleapis.com/charts'], check=True)                
+                subprocess.run(['helm', 'repo', 'update'], check=True)             
+
+                subprocess.run(['helm', 'install', 'istio-base', 'istio/base', '-n', 'istio-system', '--set', 'defaultRevision=default'], check=True)
+              
+                
+
+                subprocess.run(['helm', 'install', 'istiod', 'istio/istiod', '--namespace', 'istio-system', '--wait'], check=True)
+                subprocess.run(['kubectl', 'create', 'namespace', 'istio-ingress'], check=True)
+
+                subprocess.run(['helm', 'install','istio-ingressgateway', 'istio/gateway', '--namespace', 'istio-ingress'], check=True)
+                return jsonify({'success': True, 'message': 'Istio installed successfully'})
             else:
                 return jsonify({'success': False, 'error': 'Invalid tool selected'})
+
+            
+            
+            
         except subprocess.CalledProcessError as e:
             error = f"Error installing tool: {str(e)}"
             print(error)  # Print the error for logging purposes
@@ -575,6 +596,14 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'Monitoring is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'monitoring'], check=True)
                 return jsonify({'success': True, 'message': 'Monitoring deleted successfully'})
+            
+            elif selected_tool == 'istio':
+                # Delete Istio
+                if not is_istio_installed():
+                    return jsonify({'success': True, 'message': 'Istio is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'istio-system'], check=True)
+                subprocess.run(['kubectl', 'delete', 'ns', 'istio-ingress'], check=True)
+                return jsonify({'success': True, 'message': 'Istio deleted successfully'})
 
             else:
                 return jsonify({'success': False, 'error': 'Invalid tool selected'})
@@ -597,6 +626,14 @@ def is_tekton_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
 
+def is_istio_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'istio-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
 
 
 def is_argocd_installed():
@@ -669,6 +706,197 @@ def logs():
         return render_template('logs.html', namespaces=namespaces)
 
 
+
+
+# Route to fetch secrets in a namespace
+@app.route('/get_secrets', methods=['POST'])
+def get_secrets():
+    namespace = request.json['namespace']
+    secrets = get_secrets_for_namespace(namespace)
+    return jsonify({'secrets': secrets})
+
+# Route to fetch config maps in a namespace
+@app.route('/get_configmaps', methods=['POST'])
+def get_configmaps():
+    namespace = request.json['namespace']
+    configmaps = get_configmaps_for_namespace(namespace)
+    return jsonify({'configmaps': configmaps})
+
+# Route to fetch deployments in a namespace
+@app.route('/get_deployments', methods=['POST'])
+def get_deployments():
+    namespace = request.json['namespace']
+    deployments = get_deployments_for_namespace(namespace)
+    return jsonify({'deployments': deployments})
+
+# Route to fetch ingresses in a namespace
+@app.route('/get_ingresses', methods=['POST'])
+def get_ingresses():
+    namespace = request.json['namespace']
+    ingresses = get_ingresses_for_namespace(namespace)
+    return jsonify({'ingresses': ingresses})
+
+# Route to fetch persistent volumes (PV) in a namespace
+@app.route('/get_pvs', methods=['POST'])
+def get_pvs():
+    pvs = get_pvs_from_cluster()
+    return jsonify({'pvs': pvs})
+
+# Route to fetch persistent volume claims (PVC) in a namespace
+@app.route('/get_pvcs', methods=['POST'])
+def get_pvcs():
+    namespace = request.json['namespace']
+    pvcs = get_pvcs_for_namespace(namespace)
+    return jsonify({'pvcs': pvcs})
+
+# Route to fetch jobs in a namespace
+@app.route('/get_jobs', methods=['POST'])
+def get_jobs():
+    namespace = request.json['namespace']
+    jobs = get_jobs_for_namespace(namespace)
+    return jsonify({'jobs': jobs})
+
+# Route to fetch cron jobs in a namespace
+@app.route('/get_cronjobs', methods=['POST'])
+def get_cronjobs():
+    namespace = request.json['namespace']
+    cronjobs = get_cronjobs_for_namespace(namespace)
+    return jsonify({'cronjobs': cronjobs})
+
+
+# Route to fetch services in a namespace
+@app.route('/get_services', methods=['POST'])
+def get_services():
+    namespace = request.json['namespace']
+    services = get_services_for_namespace(namespace)
+    return jsonify({'services': services})
+
+# Function to get services for a namespace
+def get_services_for_namespace(namespace):
+    core_v1 = client.CoreV1Api()
+    services = core_v1.list_namespaced_service(namespace)
+    return [service.metadata.name for service in services.items]
+
+
+# Function to get secrets for a namespace
+def get_secrets_for_namespace(namespace):
+    secrets = api_instance.list_namespaced_secret(namespace)
+    return [secret.metadata.name for secret in secrets.items]
+
+# Function to get config maps for a namespace
+def get_configmaps_for_namespace(namespace):
+    configmaps = api_instance.list_namespaced_config_map(namespace)
+    return [configmap.metadata.name for configmap in configmaps.items]
+
+# Function to get deployments for a namespace
+def get_deployments_for_namespace(namespace):
+    apps_v1 = client.AppsV1Api()
+    deployments = apps_v1.list_namespaced_deployment(namespace)
+    return [deployment.metadata.name for deployment in deployments.items]
+
+# Function to get ingresses for a namespace
+def get_ingresses_for_namespace(namespace):
+    networking_v1 = client.NetworkingV1Api()
+    ingresses = networking_v1.list_namespaced_ingress(namespace)
+    return [ingress.metadata.name for ingress in ingresses.items]
+
+# Function to get persistent volumes (PV) from the cluster
+def get_pvs_from_cluster():
+    pvs = api_instance.list_persistent_volume()
+    return [pv.metadata.name for pv in pvs.items]
+
+# Function to get persistent volume claims (PVC) for a namespace
+def get_pvcs_for_namespace(namespace):
+    pvcs = api_instance.list_namespaced_persistent_volume_claim(namespace)
+    return [pvc.metadata.name for pvc in pvcs.items]
+
+# Function to get jobs for a namespace
+def get_jobs_for_namespace(namespace):
+    batch_v1 = client.BatchV1Api()
+    jobs = batch_v1.list_namespaced_job(namespace)
+    return [job.metadata.name for job in jobs.items]
+
+# Function to get cron jobs for a namespace
+def get_cronjobs_for_namespace(namespace):
+    batch_v1 = client.BatchV1beta1Api()
+    cronjobs = batch_v1.list_namespaced_cron_job(namespace)
+    return [cronjob.metadata.name for cronjob in cronjobs.items]
+
+
+# Load Kubernetes config
+config.load_kube_config()
+
+# Kubernetes API client
+api_instance = client.CoreV1Api()
+
+# List of resource types
+resource_types = ['pod', 'service', 'deployment', 'ingress', 'configmap', 'secret']
+
+# Route to render the HTML template
+@app.route('/delete_resource', methods=['GET'])
+def delete_resource_form():
+    namespaces = get_namespaces()
+    return render_template('delete_resource.html', namespaces=namespaces, resource_types=resource_types)
+
+# Route to handle form submission
+@app.route('/delete_resource', methods=['POST'])
+def delete_resource():
+    namespace = request.form['namespace']
+    resource_type = request.form['resource_type']
+    resource_name = request.form['resource_name']
+
+    if not namespace or not resource_type or not resource_name:
+        return 'Incomplete form data', 400
+
+    if resource_type not in resource_types:
+        return 'Invalid resource type', 400
+
+    try:
+        if resource_type == 'pod':
+            delete_pod(namespace, resource_name)
+        elif resource_type == 'service':
+            delete_service(namespace, resource_name)
+        elif resource_type == 'deployment':
+            delete_deployment(namespace, resource_name)
+        elif resource_type == 'ingress':
+            delete_ingress(namespace, resource_name)
+        elif resource_type == 'configmap':
+            delete_configmap(namespace, resource_name)
+        elif resource_type == 'secret':
+            delete_secret(namespace, resource_name)
+        return render_template('delete_resource.html', message=f'Resource deleted successfully: {resource_type} {resource_name} in namespace {namespace}', namespaces=get_namespaces(), resource_types=resource_types)
+    except Exception as e:
+        return render_template('delete_resource.html', error=f'Error deleting resource: {str(e)}', namespaces=get_namespaces(), resource_types=resource_types), 500
+
+# Function to get namespaces
+def get_namespaces():
+    return [ns.metadata.name for ns in api_instance.list_namespace().items]
+
+# Function to delete a pod
+def delete_pod(namespace, pod_name):
+    api_instance.delete_namespaced_pod(pod_name, namespace)
+
+# Function to delete a service
+def delete_service(namespace, service_name):
+    api_instance.delete_namespaced_service(service_name, namespace)
+
+# Function to delete a deployment
+def delete_deployment(namespace, deployment_name):
+    apps_v1 = client.AppsV1Api()
+    apps_v1.delete_namespaced_deployment(deployment_name, namespace)
+
+# Function to delete an ingress
+def delete_ingress(namespace, ingress_name):
+    networking_v1 = client.NetworkingV1Api()
+    networking_v1.delete_namespaced_ingress(ingress_name, namespace)
+
+# Function to delete a configmap
+def delete_configmap(namespace, configmap_name):
+    api_instance.delete_namespaced_config_map(configmap_name, namespace)
+
+# Function to delete a secret
+def delete_secret(namespace, secret_name):
+    api_instance.delete_namespaced_secret(secret_name, namespace)
 
 
 

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete Kubernetes Resource</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+        .btn-go-back {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Delete Kubernetes Resource</h1>
+        <!-- Display success message if present -->
+        {% if message %}
+        <div class="alert alert-success" role="alert">
+            {{ message }}
+        </div>
+        {% endif %}
+        <!-- Display error message if present -->
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form method="post">
+            <div class="form-group">
+                <label for="namespace">Select Namespace:</label>
+                <select class="form-control" id="namespace" name="namespace">
+                    {% for ns in namespaces %}
+                    <option value="{{ ns }}">{{ ns }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="resource_type">Select Resource Type:</label>
+                <select class="form-control" id="resource_type" name="resource_type">
+                    {% for resource_type in resource_types %}
+                    <option value="{{ resource_type }}">{{ resource_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="resource_name_div" style="display: none;">
+                <label for="resource_name">Select {{ resource_type }}:</label>
+                <select class="form-control" id="resource_name" name="resource_name">
+                    <!-- Options will be populated dynamically based on selected resource type -->
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-danger">Delete Resource</button>
+                <button type="button" onclick="goBack()" class="btn btn-secondary btn-go-back">Go Back</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('resource_type').addEventListener('change', function() {
+            var selectedResourceType = this.value;
+            var resourceDropdownDiv = document.getElementById('resource_name_div');
+            var resourceDropdown = document.getElementById('resource_name');
+            if (selectedResourceType !== '') {
+                resourceDropdownDiv.style.display = 'block';
+                resourceDropdown.innerHTML = '<option value="">Loading...</option>';
+                fetch('/get_' + selectedResourceType + 's', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ namespace: document.getElementById('namespace').value })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    resourceDropdown.innerHTML = '';
+                    data[selectedResourceType + 's'].forEach(resource => {
+                        var option = document.createElement('option');
+                        option.text = resource;
+                        resourceDropdown.add(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching resources:', error);
+                    resourceDropdown.innerHTML = '<option value="">Error fetching resources</option>';
+                });
+            } else {
+                resourceDropdownDiv.style.display = 'none';
+            }
+        });
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>
