@@ -11,9 +11,10 @@ install_docker_debian() {
 
     # Add the repository to Apt sources
     echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
     sudo apt-get update
 
     # Install Docker
@@ -51,15 +52,41 @@ install_docker_rpm() {
     echo "Docker installed successfully."
 }
 
-# Check if the OS is Debian-based or RPM-based
+# Function to install Docker for Amazon Linux
+install_docker_amzn() {
+    # Update packages
+    sudo yum update -y
+
+    # Install Docker
+    sudo yum install -y docker 
+
+    # Start Docker service
+    sudo systemctl start docker
+
+    # Enable Docker service to start on boot
+    sudo systemctl enable docker
+
+    # Add the current user to the Docker group
+    sudo usermod -aG docker $USER
+
+    # Adjust permissions for the Docker socket
+    sudo chmod 666 /var/run/docker.sock
+
+    echo "Docker installed successfully."
+}
+
+# Check if the OS is Debian-based, RPM-based, or Amazon Linux
 if [[ -e /etc/os-release ]]; then
     source /etc/os-release
     if [[ $ID == "debian" || $ID == "ubuntu" || $ID == "linuxmint" ]]; then
         echo "Detected Debian-based or Ubuntu OS."
         install_docker_debian
-    elif [[ $ID == "centos" || $ID == "rhel" || $ID == "fedora" ]]; then
+    elif [[ $ID == "centos" || $ID == "rhel" ]]; then
         echo "Detected RPM-based OS."
         install_docker_rpm
+    elif [[ $ID == "amzn" ]]; then
+        echo "Detected Amazon Linux."
+        install_docker_amzn
     else
         echo "Unsupported operating system: $ID"
         exit 1
