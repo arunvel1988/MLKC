@@ -31,7 +31,7 @@ install_tekton_cli() {
         curl -LO https://github.com/tektoncd/cli/releases/download/v0.23.0/tektoncd-cli-0.23.0_Linux-64bit.deb
         sudo dpkg -i tektoncd-cli-0.23.0_Linux-64bit.deb
         rm tektoncd-cli-0.23.0_Linux-64bit.deb
-    elif [ "$DISTRO" == "centos" ] || [ "$DISTRO" == "fedora" ] || [ "$DISTRO" == "rhel" ]; then
+    elif [ "$DISTRO" == "centos" ] || [ "$DISTRO" == "fedora" ] || [ "$DISTRO" == "amzn" ]; then
         sudo yum install -y curl
         curl -LO https://github.com/tektoncd/cli/releases/download/v0.23.0/tektoncd-cli-0.23.0_Linux-64bit.rpm
         sudo rpm -ivh tektoncd-cli-0.23.0_Linux-64bit.rpm
