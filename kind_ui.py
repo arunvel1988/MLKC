@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request,jsonify, redirect, url_for
+from flask import Flask, render_template, request,jsonify, redirect, session, url_for, Response
 import sqlite3
 import subprocess
 import yaml
@@ -10,7 +10,25 @@ from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 
 
+
 app = Flask(__name__)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 try:
@@ -71,9 +89,16 @@ def list_clusters():
     db_clusters = c.fetchall()
     conn.close()
 
-    # Get clusters using kind get clusters command
-    kind_output = subprocess.check_output(['kind', 'get', 'clusters']).decode('utf-8')
-    kind_clusters = kind_output.strip().split('\n') if kind_output.strip() else []
+    import subprocess
+
+    try:
+        kind_output = subprocess.check_output(['kind', 'get', 'clusters']).decode('utf-8')
+        kind_clusters = kind_output.strip().split('\n') if kind_output.strip() else []
+    except FileNotFoundError:
+        # Handle the case where the 'kind' executable is not found
+        print("Error: 'kind' executable not found. Please ensure 'kind' is installed and in your PATH.")
+        kind_clusters = []
+
 
     return render_template('list_clusters.html', db_clusters=db_clusters, kind_clusters=kind_clusters)
 
@@ -111,7 +136,8 @@ def create_cluster():
 def delete_cluster():
     name = request.form['name']
 
-    # Delete the Kind cluster
+    
+
     try:
         result = subprocess.run(['kind', 'delete', 'cluster', '--name', name], check=True, capture_output=True, text=True)
         print(f"Kind cluster '{name}' deleted successfully.")
@@ -121,7 +147,11 @@ def delete_cluster():
         print(f"Output: {e.output}")
         # Handle the error appropriately (e.g., show an error message to the user)
         error_message = f"Failed to delete cluster '{name}'. Please check the logs for more information."
-        return redirect(url_for('list_clusters', error=error_message))
+        # Redirect or display the error message as needed   
+    except FileNotFoundError:
+        print("Error: 'kind' executable not found. Please ensure 'kind' is installed and in your PATH.")
+        # Handle the FileNotFoundError (e.g., print an error message, exit gracefully, etc.)
+
 
     # Delete the cluster from the database
     conn = sqlite3.connect('clusters.db')
@@ -541,6 +571,21 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'create', 'namespace', 'argocd'], check=True)
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
+            
+            elif selected_tool == 'kafka':
+                # Install ArgoCD for CD
+                if is_kafka_installed():
+                    return jsonify({'success': True, 'message': 'Argocd is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka', '-n', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml', '-n', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'wait', 'kafka/my-cluster', '--for=condition=Ready', '--timeout=300s', '-n', 'kafka'], check=True)
+                
+
+
+                return jsonify({'success': True, 'message': 'Kafka installed successfully'})
+
+
             elif selected_tool == 'monitoring':
                 if is_monitoring_installed():
                     return jsonify({'success': True, 'message': 'Monitoring is already installed'})
@@ -602,6 +647,13 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+
+            elif selected_tool == 'kafka':
+                # Delete ArgoCD for CD
+                if not is_kafka_installed():
+                    return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
+                return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
             elif selected_tool == 'monitoring':
                 # Delete ArgoCD for CD
                 if not is_monitoring_installed():
@@ -641,6 +693,15 @@ def is_tekton_installed():
 def is_istio_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'istio-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+def is_kafka_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kafka', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -708,7 +769,7 @@ def security_tools(cluster_name):
                     '--set', 'falcosidekick.enabled=true',
                     f'--set', f'falcosidekick.config.slack.webhookurl={webhook_url}',
                     '--set', 'falcosidekick.config.slack.minimumpriority=notice',
-                    '--set', 'falcosidekick.config.customfields="user:changeme"'
+                    '--set', 'falcosidekick.config.customfields="user:arunvel"'
                 ]
                 subprocess.run(command, check=True)
                 return jsonify({'success': True, 'message': 'Falco installed successfully'})
@@ -764,6 +825,115 @@ def is_falco_installed():
 # end
 ###############################################################################################################
 
+
+
+
+#################################################################################################
+#        TOOLS
+###################################################################################################
+
+
+
+@app.route('/tools/<cluster_name>', methods=['GET', 'POST', 'DELETE'])
+def tools(cluster_name):
+    if request.method == 'POST':
+        data = request.json  # Access JSON data from the request body
+        selected_tool = data.get('tool')  # Get the tool information
+
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'kafka':
+                # Install Kafka
+                if is_kafka_installed():
+                    return jsonify({'success': True, 'message': 'Kafka is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka', '-n', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml', '-n', 'kafka'], check=True)
+                subprocess.run(['kubectl', 'wait', 'kafka/my-cluster', '--for=condition=Ready', '--timeout=300s', '-n', 'kafka'], check=True)
+
+                return jsonify({'success': True, 'message': 'Kafka installed successfully'})
+            elif selected_tool == 'falco':
+                # Install Falco
+                if is_fal_installed():
+                    return jsonify({'success': True, 'message': 'Falco is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'falco'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'falcosecurity', 'https://falcosecurity.github.io/charts'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                webhook_url_base64 = "aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDA0QUhTRktMTTgvQjA1SzA3NkgyNlMvV2ZHRGQ5MFFDcENwNnFzNmFKNkV0dEg4"
+                webhook_url = base64.b64decode(webhook_url_base64).decode('utf-8')
+                command = [
+                    'helm', 'install', 'falco', '-n', 'falco',
+                    '--set', 'driver.kind=ebpf',
+                    '--set', 'tty=true',
+                    'falcosecurity/falco',
+                    '--set', 'falcosidekick.enabled=true',
+                    f'--set', f'falcosidekick.config.slack.webhookurl={webhook_url}',
+                    '--set', 'falcosidekick.config.slack.minimumpriority=notice',
+                    '--set', 'falcosidekick.config.customfields="user:arunvel"'
+                ]
+                subprocess.run(command, check=True)
+                return jsonify({'success': True, 'message': 'Falco installed successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+    elif request.method == 'DELETE':
+        data = request.json  # Access JSON data from the request body
+        selected_tool = data.get('tool')  # Get the tool information
+
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'kafka':
+                if not is_kafka_installed():
+                    return jsonify({'success': True, 'message': 'Kafka is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
+                return jsonify({'success': True, 'message': 'Kafka deleted successfully'})
+            elif selected_tool == 'falco':
+                if not is_fal_installed():
+                    return jsonify({'success': True, 'message': 'Falco is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'falco'], check=True)
+                return jsonify({'success': True, 'message': 'Falco deleted successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    
+    else:
+        return render_template('tools.html', cluster_name=cluster_name)
+
+
+def is_kafka_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kafka', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_fal_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'falco', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+#######################################################################################################
+# TOOLS --------------------------------------------------END
+############################################################################################################
+
+
+
+
+
+
+
 @app.route('/get_pods', methods=['POST'])
 def get_pods():
     if request.method == 'POST':
@@ -780,6 +950,15 @@ def get_pods():
 ######################################################################################################
 ############# logs
 ####################################################################################################
+try:
+    # Try to load the kubeconfig
+    config.load_kube_config()
+    print("Kubeconfig loaded successfully")
+except ConfigException as e:
+    # Handle the case when the kubeconfig is not found or is invalid
+    print(f"Kubeconfig not found or invalid: {str(e)}")
+    print("Continuing without kubeconfig...")
+
 
 
 
@@ -812,6 +991,8 @@ def logs():
     else:
         namespaces = get_namespaces()
         return render_template('logs.html', namespaces=namespaces)
+
+
 
 
 
@@ -1006,6 +1187,20 @@ def delete_secret(namespace, secret_name):
 
 
 ##################################################################################################################
+###### ATTACH
+##################################################################################################################
+
+
+
+##################################################################################################################
+###### ATTACH --------------------------------END
+##################################################################################################################
+
+
+
+
+
+##################################################################################################################
 ###### DESCRIPTION 
 ##################################################################################################################
 
@@ -1097,8 +1292,8 @@ def get_resources_route():
         return jsonify({'error': str(e)})
 
 # Route to render the form
-@app.route('/describe', methods=['GET', 'POST'])
-def describe():
+@app.route('/describe/<cluster_name>', methods=['GET', 'POST'])
+def describe(cluster_name):
     if request.method == 'POST':
         namespace = request.form['namespace']
         resource_type = request.form['resource_type']
@@ -1111,7 +1306,7 @@ def describe():
         except Exception as e:
             description = f"Error describing {resource_type}: {e}"
 
-        return render_template('describe.html', description=description)
+        return render_template('describe.html', cluster_name=cluster_name, description=description)
     
     # Add a default return statement for the GET method
     return render_template('describe.html')
@@ -1125,4 +1320,5 @@ def describe():
 if __name__ == '__main__':
     create_database()
     app.run(host='0.0.0.0',port=5000,debug=True)
+    
 
