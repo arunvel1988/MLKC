@@ -164,6 +164,27 @@
 
         <div class="tool-card">
             <div class="tool-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Kafka </h3>
+                <p>Install kafka.</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="kafka-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('kafka')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('kafka')">Delete</button>
+            </div>
+            
+        </div>
+
+
+        <div class="tool-card">
+            <div class="tool-icon">
                 <i class="fas fa-chart-line"></i>
             </div>
             <div class="tool-info">
