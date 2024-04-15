@@ -35,7 +35,7 @@ if [[ -e /etc/os-release ]]; then
     if [[ $ID == "debian" || $ID == "ubuntu" || $ID == "linuxmint" ]]; then
         echo "Detected Debian-based or Ubuntu OS."
         install_helm_debian
-    elif [[ $ID == "centos" || $ID == "rhel" || $ID == "fedora" ]]; then
+    elif [[ $ID == "centos" || $ID == "amzn" || $ID == "fedora" ]]; then
         echo "Detected RPM-based OS."
         install_helm_rpm
     else
