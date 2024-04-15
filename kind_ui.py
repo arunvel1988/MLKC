@@ -7,9 +7,21 @@ import threading
 import os
 import base64
 from kubernetes import client, config
+from kubernetes.config.config_exception import ConfigException
 
 
 app = Flask(__name__)
+
+
+try:
+    # Try to load the kubeconfig
+    config.load_kube_config()
+    print("Kubeconfig loaded successfully")
+except ConfigException as e:
+    # Handle the case when the kubeconfig is not found or is invalid
+    print(f"Kubeconfig not found or invalid: {str(e)}")
+    print("Continuing without kubeconfig...")
+
 
 # Create a SQLite database to store cluster details
 def create_database():
@@ -337,22 +349,21 @@ def cluster_created():
     return render_template('cluster_created.html', name=name)
 
 
-
 @app.route('/check_preq')
 def check_preq():
     # Check if Docker is installed
     try:
         docker_output = subprocess.check_output(['docker', '--version']).decode('utf-8').strip()
         docker_installed = True
-    except subprocess.CalledProcessError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         docker_installed = False
         docker_output = 'Docker is not installed'
 
     # Check if kubectl is installed
     try:
-        kubectl_output = subprocess.check_output(['kubectl']).decode('utf-8').strip()
+        kubectl_output = subprocess.check_output(['kubectl', 'version', '--client']).decode('utf-8').strip()
         kubectl_installed = True
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         kubectl_installed = False
         kubectl_output = 'kubectl is not installed'
 
@@ -360,7 +371,7 @@ def check_preq():
     try:
         kind_output = subprocess.check_output(['kind', 'version']).decode('utf-8').strip()
         kind_installed = True
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         kind_installed = False
         kind_output = 'Kind is not installed'
 
@@ -368,7 +379,7 @@ def check_preq():
     try:
         helm_output = subprocess.check_output(['helm', 'version']).decode('utf-8').strip()
         helm_installed = True
-    except subprocess.CalledProcessError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         helm_installed = False
         helm_output = 'Helm is not installed'
 
@@ -376,11 +387,12 @@ def check_preq():
     try:
         python3_output = subprocess.check_output(['python3', '--version']).decode('utf-8').strip()
         python3_installed = True
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         python3_installed = False
         python3_output = 'Python3 is not installed'
 
-    return render_template('check_preq.html', docker_installed=docker_installed, docker_output=docker_output,
+    return render_template('check_preq.html',
+                           docker_installed=docker_installed, docker_output=docker_output,
                            kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
                            kind_installed=kind_installed, kind_output=kind_output,
                            helm_installed=helm_installed, helm_output=helm_output,
@@ -771,8 +783,6 @@ def get_pods():
 
 
 
-# Load Kubernetes configuration
-config.load_kube_config()
 
 # Function to get namespaces
 def get_namespaces():
@@ -921,8 +931,6 @@ def get_cronjobs_for_namespace(namespace):
     return [cronjob.metadata.name for cronjob in cronjobs.items]
 
 
-# Load Kubernetes config
-config.load_kube_config()
 
 # Kubernetes API client
 api_instance = client.CoreV1Api()
@@ -1004,9 +1012,6 @@ def delete_secret(namespace, secret_name):
 
 
 
-
-# Load Kubernetes configuration
-config.load_kube_config()
 
 # Function to get namespaces
 def get_namespaces():
@@ -1119,4 +1124,5 @@ def describe():
 
 if __name__ == '__main__':
     create_database()
-    app.run(debug=True)
+    app.run(host='0.0.0.0',port=5000,debug=True)
+
