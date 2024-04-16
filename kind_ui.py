@@ -67,15 +67,36 @@ def save_cluster(name, k8s_version, num_nodes):
     conn.commit()
     conn.close()
 
-# Generate Kind cluster configuration YAML
+
+
 def generate_kind_config(name, num_nodes):
     config = {
         "kind": "Cluster",
         "apiVersion": "kind.x-k8s.io/v1alpha4",
-        "nodes": [{"role": "control-plane"}] + [{"role": "worker"} for _ in range(num_nodes - 1)]
+        "nodes": [
+            {
+                "role": "control-plane",
+                "extraMounts": [
+                    {
+                        "hostPath": "/dev",
+                        "containerPath": "/dev"
+                    },
+                    {
+                        "hostPath": "/var/run/docker.sock",
+                        "containerPath": "/var/run/docker.sock"
+                    }
+                ]
+            }
+        ] + [
+            {"role": "worker"}
+            for _ in range(num_nodes - 1)
+        ]
     }
     with open(f"kind-config-{name}.yaml", "w") as file:
         yaml.dump(config, file)
+
+
+
 
 @app.route('/')
 def index():
@@ -270,6 +291,41 @@ def namespace_data():
         'services': services_html
     })
 
+
+
+@app.route('/kafka_cluster_details', methods=['GET'])
+def kafka_cluster_details():
+    try:
+        # Run the kubectl command to get details of the Kafka cluster
+        result = subprocess.run(['kubectl', 'get', 'kafka','-n','kafka'], capture_output=True, check=True, text=True)
+        kafka_output = result.stdout
+
+        # Split the output into lines and extract the relevant details
+        lines = kafka_output.strip().split('\n')
+        headers = lines[0].split()
+        data = lines[1].split()
+
+        # Extract the desired details
+        cluster_name = data[0]
+        desired_kafka_replicas = int(data[1])
+        desired_zk_replicas = int(data[2])
+        ready = data[3]
+        metadata_state = data[4]
+
+        # Construct the response
+        response = {
+            'success': True,
+            'cluster_name': cluster_name,
+            'desired_kafka_replicas': desired_kafka_replicas,
+            'desired_zk_replicas': desired_zk_replicas,
+            'ready': ready,
+            'metadata_state': metadata_state
+        }
+        
+        return jsonify(response)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error retrieving Kafka cluster details: {str(e)}"
+        return jsonify({'success': False, 'error': error_message})
 
 
 
@@ -575,7 +631,7 @@ def devops_tools(cluster_name):
             elif selected_tool == 'kafka':
                 # Install ArgoCD for CD
                 if is_kafka_installed():
-                    return jsonify({'success': True, 'message': 'Argocd is already installed'})
+                    return jsonify({'success': True, 'message': 'Kafka is already installed'})
                 subprocess.run(['kubectl', 'create', 'namespace', 'kafka'], check=True)
                 subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka', '-n', 'kafka'], check=True)
                 subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml', '-n', 'kafka'], check=True)
@@ -583,7 +639,7 @@ def devops_tools(cluster_name):
                 
 
 
-                return jsonify({'success': True, 'message': 'Kafka installed successfully'})
+                return jsonify({'success': True, 'message': 'Kafka installed successfully. Topic created my-topic. Cluster created my-cluster '})
 
 
             elif selected_tool == 'monitoring':
@@ -599,6 +655,20 @@ def devops_tools(cluster_name):
                 
                 subprocess.run(['helm', 'install', 'my-grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
                 return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+            
+            elif selected_tool == 'vault':
+                if is_vault_installed():
+                    return jsonify({'success': True, 'message': 'Vault is already installed'})
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'vault'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'hashicorp', 'https://helm.releases.hashicorp.com'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'Vault installed successfully'})
             
 
             elif selected_tool == 'istio':
@@ -654,6 +724,17 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+            
+            elif selected_tool == 'vault':
+                # Delete ArgoCD for CD
+                if not is_vault_installed():
+                    return jsonify({'success': True, 'message': 'Vault is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'vault'], check=True)
+                return jsonify({'success': True, 'message': 'Vault deleted successfully'})
+            
+
+
+
             elif selected_tool == 'monitoring':
                 # Delete ArgoCD for CD
                 if not is_monitoring_installed():
@@ -698,6 +779,16 @@ def is_istio_installed():
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
+    
+def is_vault_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'vault', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
 
 def is_kafka_installed():
     try:
@@ -991,7 +1082,6 @@ def logs():
     else:
         namespaces = get_namespaces()
         return render_template('logs.html', namespaces=namespaces)
-
 
 
 
