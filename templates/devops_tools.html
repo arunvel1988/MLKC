@@ -161,6 +161,7 @@
                 <div>
                     <button class="install-btn" onclick="installTool('jaeger')">Install</button>
                     <button class="delete-btn" onclick="deleteTool('jaeger')">Delete</button>
+                    <button class="password-btn" onclick="jaeger('jaeger')">Jaeger Details</button>
                 </div>
             </div>
 
@@ -360,6 +361,11 @@
         function openKafkaClusterDetails() {
             window.open("/kafka", "_blank");
         }
+        
+        function jaeger() {
+            window.open("/jaeger", "_blank");
+        }
+
 
         function crossplane() {
             window.open("/crossplane", "_blank");
