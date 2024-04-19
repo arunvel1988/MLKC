@@ -57,7 +57,7 @@
 <body>
     <div class="container">
         <h1>Jaeger</h1>
-        <a class="btn" href="{{ dashboard_url }}" target="_blank">{{ dashboard_url }}</a>
+        <a class="btn" href="{{ url_for('jaeger_dashboard') }}">Jaeger Dashboard</a>
         <form action="{{ url_for('deploy_jaeger_app') }}" method="post">
             <button type="submit">Deploy Sample Application</button>
         </form>
