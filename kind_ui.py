@@ -14,22 +14,9 @@ from kubernetes.config.config_exception import ConfigException
 app = Flask(__name__)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##############################################################################################
+########### loading kubeconfig
+##############################################################################################
 
 try:
     # Try to load the kubeconfig
@@ -40,6 +27,9 @@ except ConfigException as e:
     print(f"Kubeconfig not found or invalid: {str(e)}")
     print("Continuing without kubeconfig...")
 
+##############################################################################################
+########### loading kubeconfig -----------------------------------------------------END
+##############################################################################################
 
 # Create a SQLite database to store cluster details
 def create_database():
@@ -69,7 +59,7 @@ def save_cluster(name, k8s_version, num_nodes):
 
 
 
-def generate_kind_config(name, num_nodes):
+def generate_kind_config(name, num_control_plane_nodes, num_worker_nodes=1):
     config = {
         "kind": "Cluster",
         "apiVersion": "kind.x-k8s.io/v1alpha4",
@@ -87,55 +77,50 @@ def generate_kind_config(name, num_nodes):
                     }
                 ]
             }
-        ] + [
+        ] * num_control_plane_nodes + [
             {"role": "worker"}
-            for _ in range(num_nodes - 1)
+            for _ in range(num_worker_nodes)
         ]
     }
     with open(f"kind-config-{name}.yaml", "w") as file:
         yaml.dump(config, file)
 
 
+def generate_ha_kind_config(name, num_nodes):
+    # For HA cluster, one control plane node and multiple workers
+    generate_kind_config(name, 1, num_nodes)
+
+def generate_multi_ha_kind_config(name, num_control_plane_nodes, num_nodes):
+    # For multi-master HA cluster, multiple control plane nodes and multiple workers
+    generate_kind_config(name, num_control_plane_nodes, num_nodes)
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/list_clusters')
-def list_clusters():
-    conn = sqlite3.connect('clusters.db')
-    c = conn.cursor()
-    c.execute("SELECT * FROM clusters")
-    db_clusters = c.fetchall()
-    conn.close()
-
-    import subprocess
-
-    try:
-        kind_output = subprocess.check_output(['kind', 'get', 'clusters']).decode('utf-8')
-        kind_clusters = kind_output.strip().split('\n') if kind_output.strip() else []
-    except FileNotFoundError:
-        # Handle the case where the 'kind' executable is not found
-        print("Error: 'kind' executable not found. Please ensure 'kind' is installed and in your PATH.")
-        kind_clusters = []
-
-
-    return render_template('list_clusters.html', db_clusters=db_clusters, kind_clusters=kind_clusters)
 
 @app.route('/create_cluster', methods=['GET', 'POST'])
 def create_cluster():
     if request.method == 'POST':
         name = request.form['name']
         k8s_version = request.form['k8s_version']
-        num_nodes = int(request.form['num_nodes'])
+        cluster_type = request.form['cluster_type']
 
         if cluster_exists(name):
             error = f"Cluster with name '{name}' already exists."
             return render_template('create_cluster.html', error=error)
 
-        # Generate Kind cluster configuration YAML
-        generate_kind_config(name, num_nodes)
+        if cluster_type == 'single':
+            num_nodes = int(request.form['num_nodes'])
+            generate_kind_config(name, num_nodes)
+        elif cluster_type == 'ha':
+            num_nodes = int(request.form['num_nodes'])
+            generate_ha_kind_config(name, num_nodes)
+        elif cluster_type == 'multi_ha':
+            num_control_plane_nodes = int(request.form['num_control_plane_nodes'])
+            num_nodes = int(request.form['num_nodes'])
+            generate_multi_ha_kind_config(name, num_control_plane_nodes, num_nodes)
+        else:
+            error = "Invalid cluster type selected."
+            return render_template('create_cluster.html', error=error)
 
         # Create the Kind cluster
         try:
@@ -151,6 +136,30 @@ def create_cluster():
     return render_template('create_cluster.html')
 
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/list_clusters')
+def list_clusters():
+    conn = sqlite3.connect('clusters.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM clusters")
+    db_clusters = c.fetchall()
+    conn.close()
+
+    
+
+    try:
+        kind_output = subprocess.check_output(['kind', 'get', 'clusters']).decode('utf-8')
+        kind_clusters = kind_output.strip().split('\n') if kind_output.strip() else []
+    except FileNotFoundError:
+        # Handle the case where the 'kind' executable is not found
+        print("Error: 'kind' executable not found. Please ensure 'kind' is installed and in your PATH.")
+        kind_clusters = []
+
+
+    return render_template('list_clusters.html', db_clusters=db_clusters, kind_clusters=kind_clusters)
 
 
 @app.route('/delete_cluster', methods=['POST'])
@@ -183,6 +192,9 @@ def delete_cluster():
 
     success_message = f"Cluster '{name}' deleted successfully."
     return redirect(url_for('list_clusters', message=success_message))
+
+
+
 @app.route('/cluster_info/<name>')
 def cluster_info(name):
     # Get cluster information using kubectl
@@ -290,42 +302,6 @@ def namespace_data():
         'pods': pods_html,
         'services': services_html
     })
-
-
-
-@app.route('/kafka_cluster_details', methods=['GET'])
-def kafka_cluster_details():
-    try:
-        # Run the kubectl command to get details of the Kafka cluster
-        result = subprocess.run(['kubectl', 'get', 'kafka','-n','kafka'], capture_output=True, check=True, text=True)
-        kafka_output = result.stdout
-
-        # Split the output into lines and extract the relevant details
-        lines = kafka_output.strip().split('\n')
-        headers = lines[0].split()
-        data = lines[1].split()
-
-        # Extract the desired details
-        cluster_name = data[0]
-        desired_kafka_replicas = int(data[1])
-        desired_zk_replicas = int(data[2])
-        ready = data[3]
-        metadata_state = data[4]
-
-        # Construct the response
-        response = {
-            'success': True,
-            'cluster_name': cluster_name,
-            'desired_kafka_replicas': desired_kafka_replicas,
-            'desired_zk_replicas': desired_zk_replicas,
-            'ready': ready,
-            'metadata_state': metadata_state
-        }
-        
-        return jsonify(response)
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error retrieving Kafka cluster details: {str(e)}"
-        return jsonify({'success': False, 'error': error_message})
 
 
 
@@ -627,6 +603,18 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'create', 'namespace', 'argocd'], check=True)
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
+
+            elif selected_tool == 'crossplane':
+                # Install Crossplane
+                if is_crossplane_installed():
+                    return jsonify({'success': True, 'message': 'Crossplane is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'crossplane-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'crossplane-stable', 'https://charts.crossplane.io/stable'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'crossplane', 'crossplane-stable/crossplane', '--namespace', 'crossplane-system'], check=True)
+                
+                return jsonify({'success': True, 'message': 'crossplane installed successfully'})
             
             elif selected_tool == 'kafka':
                 # Install ArgoCD for CD
@@ -717,6 +705,14 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+            
+
+            elif selected_tool == 'crossplane':
+                # Delete ArgoCD for CD
+                if not is_crossplane_installed():
+                    return jsonify({'success': True, 'message': 'crossplane is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'crossplane-system'], check=True)
+                return jsonify({'success': True, 'message': 'crossplane deleted successfully'})
 
             elif selected_tool == 'kafka':
                 # Delete ArgoCD for CD
@@ -765,6 +761,17 @@ def devops_tools(cluster_name):
 def is_tekton_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'tekton-pipelines', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+    
+
+def is_crossplane_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'crossplane-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -1400,6 +1407,175 @@ def describe(cluster_name):
     
     # Add a default return statement for the GET method
     return render_template('describe.html')
+
+
+
+
+
+
+# Function to get Kafka cluster details
+@app.route('/kafka/', methods=['GET'])
+def kafka_cluster_details():
+    try:
+        # Run the kubectl command to get details of the Kafka cluster
+        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'kafka'], capture_output=True, check=True, text=True)
+        kafka_output = result.stdout
+
+        # Split the output into lines and extract the relevant details
+        lines = kafka_output.strip().split('\n')
+        headers = lines[0].split()
+        data = lines[1].split()
+
+        # Extract the desired details
+        kafka_cluster_name = data[0]
+        desired_kafka_replicas = int(data[1])
+        desired_zk_replicas = int(data[2])
+        ready = data[3]
+        metadata_state = data[4]
+
+        # Construct the response
+        response = {
+            'success': True,
+            'kafka_cluster_name': kafka_cluster_name,
+            'desired_kafka_replicas': desired_kafka_replicas,
+            'desired_zk_replicas': desired_zk_replicas,
+            'ready': ready,
+            'metadata_state': metadata_state
+        }
+        
+        return render_template('kafka_cluster.html', data=response)
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error retrieving Kafka cluster details: {str(e)}"
+        return jsonify({'success': False, 'error': error_message})
+
+
+
+@app.route('/kafka/create_topic', methods=['POST'])
+def create_topic():
+    try:
+        topic_name = request.form['topic_name']
+        partitions = request.form['partitions']
+        replicas = request.form['replicas']
+
+        # Define the YAML template for creating Kafka topic
+        yaml_template = f"""
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {topic_name}
+  namespace: kafka
+spec:
+  partitions: {partitions}
+  replicas: {replicas}
+  config:
+    retention.ms: 7200000
+"""
+        # Apply the YAML content using kubectl
+        result = subprocess.run(['kubectl', 'apply', '-f', '-'], input=yaml_template, capture_output=True, check=True, text=True)
+        return render_template('create_topic.html', success=True, message=result.stdout)
+    except Exception as e:
+        return render_template('create_topic.html',cluster_name=cluster_name, success=False, error=str(e))
+
+
+
+@app.route('/kafka/delete_topic', methods=['GET', 'POST'])
+def delete_topic():
+    if request.method == 'POST':
+        try:
+            # Get the selected topic name from the form
+            topic_name = request.form['topic_name']
+
+            # Run the command to delete the Kafka topic
+            result = subprocess.run(['kubectl', 'delete', 'kafkatopic', topic_name, '-n', 'kafka'], capture_output=True, check=True, text=True)
+
+            # Check if the command was successful
+            if result.returncode == 0:
+                return jsonify({'success': True, 'message': f'Topic "{topic_name}" deleted successfully.'})
+            else:
+                return jsonify({'success': False, 'error': f'Failed to delete topic "{topic_name}". Error: {result.stderr}'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+    else:
+        try:
+            # Run the command to get the list of Kafka topics
+            result = subprocess.run(['kubectl', 'get', 'kafkatopic', '-n', 'kafka'], capture_output=True, check=True, text=True)
+
+            # Extract topic names from the command output
+            topics = [line.split()[0] for line in result.stdout.strip().split('\n')[1:]]
+
+            return render_template('delete_topic.html',cluster_name=cluster_name, topics=topics)
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+
+
+
+
+
+
+
+
+
+######################################################################################
+########################### cross plane
+###################################################################################
+
+
+
+@app.route('/crossplane', methods=['GET', 'POST'])
+def crossplane():
+    if request.method == 'POST':
+        # Step 1: Create provider
+        provider_yaml_path = 'tools/crossplane/provider_iam.yaml'
+        subprocess.run(['kubectl', 'apply', '-f', provider_yaml_path])
+
+        # Step 2: Get AWS credentials from the form
+        aws_access_key = request.form['aws_access_key']
+        aws_secret_key = request.form['aws_secret_key']
+
+        # Step 3: Create secret for AWS credentials
+        aws_credentials = f'[default]\naws_access_key_id = {aws_access_key}\naws_secret_access_key = {aws_secret_key}'
+        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'aws-secret', '-n', 'crossplane-system', '--from-literal=creds=' + aws_credentials])
+
+        # Step 4: Create provider config using the secret
+        provider_config_yaml = """
+        apiVersion: aws.upbound.io/v1beta1
+        kind: ProviderConfig
+        metadata:
+          name: default
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              namespace: crossplane-system
+              name: aws-secret
+              key: creds
+        """
+        subprocess.run(['kubectl', 'apply', '-f', '-'], input=provider_config_yaml.encode())
+
+        return render_template('upload_yaml_crossplane.html')
+
+    return render_template('crossplane.html')
+
+
+@app.route('/create_aws_resource', methods=['GET', 'POST'])
+def create_aws_resource():
+    if request.method == 'POST':
+        # Step 5: Create AWS resource using uploaded YAML file
+        yaml_file = request.files['yaml_file']
+        yaml_content = yaml_file.read()
+
+        subprocess.run(['kubectl', 'create', '-f', '-'], input=yaml_content)
+
+        return 'AWS resource created successfully.'
+
+    # Render the HTML template for uploading YAML file
+    return render_template('resource_crossplane.html')
+
+
+
+
+
+
 
 
 

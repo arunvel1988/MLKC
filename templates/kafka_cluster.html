@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Cluster Details</title>
+    <style>
+        .back-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kafka Cluster Details</h1>
+
+    <table border="1">
+        <tr>
+            <th>Cluster Name</th>
+            <th>Desired Kafka Replicas</th>
+            <th>Desired Zookeeper Replicas</th>
+            <th>Ready</th>
+            <th>Metadata State</th>
+        </tr>
+        <tr>
+            <td>{{ data.kafka_cluster_name }}</td>
+            <td>{{ data.desired_kafka_replicas }}</td>
+            <td>{{ data.desired_zk_replicas }}</td>
+            <td>{{ data.ready }}</td>
+            <td>{{ data.metadata_state }}</td>
+        </tr>
+    </table>
+
+    <h2>Actions</h2>
+
+    <button onclick="createTopic()">Create Topic</button>
+    <button onclick="deleteTopic()">Delete Topic</button>
+
+    <a href="/" class="back-button">Back to Cluster</a>
+
+
+    <script>
+        function createTopic() {
+            // Retrieve topic details from user input (if any)
+            var topicName = prompt("Enter the name of the topic:");
+            var partitions = prompt("Enter the number of partitions:");
+            var replicas = prompt("Enter the number of replicas:");
+
+            // Check if inputs are empty or null
+            if (!topicName || !partitions || !replicas) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            // Check if partitions and replicas are valid numbers
+            if (isNaN(partitions) || isNaN(replicas) || partitions <= 0 || replicas <= 0) {
+                alert("Please enter valid numbers for partitions and replicas.");
+                return;
+            }
+
+            // Send a POST request to the server to create the topic
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/create_topic", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful
+                        alert("Topic created successfully!");
+                    } else {
+                        // Request failed
+                        alert("Failed to create topic. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send("topic_name=" + encodeURIComponent(topicName) +
+                     "&partitions=" + encodeURIComponent(partitions) +
+                     "&replicas=" + encodeURIComponent(replicas));
+        }
+
+        function deleteTopic() {
+            // Retrieve the selected topic name from the dropdown menu
+            var topicName = prompt("Enter the name of the topic to delete:");
+
+            // Check if topicName is empty or null
+            if (!topicName) {
+                alert("Please enter the name of the topic to delete.");
+                return;
+            }
+
+            // Send a POST request to the server to delete the topic
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/delete_topic", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful
+                        alert("Topic deleted successfully!");
+                    } else {
+                        // Request failed
+                        alert("Failed to delete topic. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send("topic_name=" + encodeURIComponent(topicName));
+        }
+
+        
+    </script>
+</body>
+</html>

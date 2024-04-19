@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Kafka Topic</title>
+</head>
+<body>
+    <h1>Delete Kafka Topic</h1>
+    <form action="/kafka/delete_topic" method="post">
+        <label for="topic_name">Select Topic to Delete:</label>
+        <select id="topic_name" name="topic_name">
+            {% for topic in topics %}
+                <option value="{{ topic }}">{{ topic }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+        <button type="submit">Delete Topic</button>
+    </form>
+</body>
+</html>

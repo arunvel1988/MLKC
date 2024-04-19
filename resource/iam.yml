@@ -1,0 +1,7 @@
+apiVersion: iam.aws.crossplane.io/v1beta1
+kind: IAMUser
+metadata:
+  name: example-iam-user
+spec:
+  forProvider:
+    username: my-iam-user
