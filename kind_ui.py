@@ -641,7 +641,7 @@ def devops_tools(cluster_name):
                 subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/kube-prometheus-stack', '--namespace', 'monitoring'], check=True)
 
                 
-                subprocess.run(['helm', 'install', 'my-grafana', 'grafana/grafana', '--namespace', 'monitoring'], check=True)
+               
                 return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
             
             elif selected_tool == 'vault':
