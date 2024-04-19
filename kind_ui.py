@@ -365,15 +365,8 @@ def get_namespaces():
         print(f"Error retrieving namespaces: {str(e)}")
         return []
 
-def get_services(namespace):
-    try:
-        result = subprocess.run(['kubectl', 'get', 'services', '-n', namespace, '-o', 'json'], capture_output=True, check=True, text=True)
-        services_json = json.loads(result.stdout)
-        services = [item['metadata']['name'] for item in services_json['items']]
-        return services
-    except subprocess.CalledProcessError as e:
-        print(f"Error retrieving services: {str(e)}")
-        return []
+
+
 
 
 
@@ -1149,20 +1142,24 @@ def get_cronjobs():
     cronjobs = get_cronjobs_for_namespace(namespace)
     return jsonify({'cronjobs': cronjobs})
 
-
-# Route to fetch services in a namespace
-@app.route('/get_services', methods=['POST'])
+@app.route('/get_services', methods=['GET'])
 def get_services():
-    namespace = request.json['namespace']
-    services = get_services_for_namespace(namespace)
-    return jsonify({'services': services})
+    namespace = request.args.get('namespace')
+    if namespace:
+        services = get_services_for_namespace(namespace)
+        return jsonify({'services': services})
+    else:
+        return jsonify({'error': 'Namespace not provided'}), 400
 
 # Function to get services for a namespace
 def get_services_for_namespace(namespace):
     core_v1 = client.CoreV1Api()
-    services = core_v1.list_namespaced_service(namespace)
-    return [service.metadata.name for service in services.items]
-
+    try:
+        services = core_v1.list_namespaced_service(namespace)
+        return [service.metadata.name for service in services.items]
+    except client.rest.ApiException as e:
+        print(f"Error retrieving services for namespace '{namespace}': {str(e)}")
+        return []
 
 # Function to get secrets for a namespace
 def get_secrets_for_namespace(namespace):
@@ -1587,4 +1584,3 @@ if __name__ == '__main__':
     create_database()
     app.run(host='0.0.0.0',port=5000,debug=True)
     
-
