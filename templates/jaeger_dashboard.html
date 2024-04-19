@@ -24,25 +24,17 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn:hover {
-            background-color: #3e8e41;
+        .message {
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Jaeger Dashboard</h1>
-        <a class="btn" href="{{ dashboard_url }}" target="_blank">{{ dashboard_url }}</a>
+        <p class="message">{{ dashboard_url }}</p>
     </div>
 </body>
 </html>
