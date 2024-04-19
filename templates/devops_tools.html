@@ -144,6 +144,26 @@
             </div>
         </div>
 
+        <div class="tools-container">
+            <div class="tool-card">
+                <div class="tool-icon">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="tool-info">
+                    <h3>Jaeger</h3>
+                    <p>Install Jaeger.</p>
+                </div>
+                <div class="spinner-container"> <!-- Added spinner container -->
+                    <div class="spinner" id="jaeger-spinner"> <!-- Added spinner ID -->
+                        <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    </div>
+                </div>
+                <div>
+                    <button class="install-btn" onclick="installTool('jaeger')">Install</button>
+                    <button class="delete-btn" onclick="deleteTool('jaeger')">Delete</button>
+                </div>
+            </div>
+
         <!-- Repeat similar structure for other tool cards -->
         <div class="tool-card">
             <div class="tool-icon">
