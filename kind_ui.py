@@ -8,6 +8,7 @@ import os
 import base64
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
+import requests
 
 
 
@@ -372,9 +373,18 @@ def get_namespaces():
 
 def port_forward_thread(namespace, service_name, host_port, container_port):
     try:
-        subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', f'{host_port}:{container_port}', '-n', namespace], check=True)
+        subprocess.run(['kubectl', 'port-forward', f'svc/{service_name}', '--address', '0.0.0.0', f'{host_port}:{container_port}', '-n', namespace], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error during port forwarding: {str(e)}")
+
+def get_instance_ip():
+    try:
+        instance_id = requests.get('http://169.254.169.254/latest/meta-data/instance-id').text
+        ip_address = subprocess.check_output(['aws', 'ec2', 'describe-instances', '--instance-ids', instance_id, '--query', 'Reservations[*].Instances[*].PublicIpAddress', '--output', 'text'])
+        return ip_address.decode().strip()
+    except Exception as e:
+        print(f"Error getting instance IP: {str(e)}")
+        return 'localhost'
 
 @app.route('/port_forward/<cluster_name>', methods=['GET', 'POST'])
 def port_forward(cluster_name):
@@ -383,19 +393,20 @@ def port_forward(cluster_name):
         service_name = request.form['service_name']
         container_port = request.form['container_port']
         host_port = request.form['host_port']
-
         try:
             context_name = f"kind-{cluster_name}"
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
             threading.Thread(target=port_forward_thread, args=(namespace, service_name, host_port, container_port)).start()
-            message = f'http://localhost:{host_port}'
+            instance_ip = get_instance_ip()
+            if instance_ip == 'localhost':
+                message = f'http://localhost:{host_port}'
+            else:
+                message = f'http://{instance_ip}:{host_port}'
             return render_template('port_forward.html', cluster_name=cluster_name, message=message, namespaces=get_namespaces(), selected_namespace=namespace, services=get_services(namespace))
         except subprocess.CalledProcessError as e:
             error = f"Error during port forwarding: {str(e)}"
             return redirect(url_for('cluster_info', name=cluster_name, error=error))
-
     return render_template('port_forward.html', cluster_name=cluster_name, namespaces=get_namespaces(), selected_namespace=None, services=[])
-
 
 
 @app.route('/cluster_created')
