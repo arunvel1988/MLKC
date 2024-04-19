@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Kafka Topic</title>
+</head>
+<body>
+    <h1>Create Kafka Topic</h1>
+    <form id="createTopicForm" action="/kafka/create_topic" method="post" onsubmit="return validateForm()">
+        <label for="topic_name">Topic Name:</label>
+        <input type="text" id="topic_name" name="topic_name" required><br><br>
+        <label for="partitions">Partitions:</label>
+        <input type="number" id="partitions" name="partitions" required><br><br>
+        <label for="replicas">Replicas:</label>
+        <input type="number" id="replicas" name="replicas" required><br><br>
+        <!-- Add more fields for additional parameters if needed -->
+        <button type="submit">Create Topic</button>
+    </form>
+
+    <script>
+        function validateForm() {
+            var topicName = document.getElementById("topic_name").value.trim();
+            if (topicName === "") {
+                alert("Please enter a topic name.");
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

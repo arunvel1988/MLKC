@@ -17,12 +17,19 @@
             margin-bottom: 30px;
         }
 
+        .tools-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin: 0 -10px; /* Adjust margin to account for tool-card padding */
+        }
+
         .tool-card {
             background-color: #fff;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            width: 250px; /* Set width for each tool card */
+            width: calc(25% - 20px); /* Set width for each tool card */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -31,6 +38,8 @@
             position: relative;
             overflow: hidden; /* Prevent spinner overflow */
             margin-bottom: 20px; /* Add margin between tool cards */
+            margin-right: 20px; /* Add margin between tool cards */
+            margin-left: 20px;
         }
 
         .tool-card:hover {
@@ -61,7 +70,7 @@
             background-color: #4CAF50; /* Green color */
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 15px;
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s ease;
@@ -76,24 +85,6 @@
             background-color: #dc3545; /* Red color */
             margin-left: 10px; /* Add margin between install and delete buttons */
         }
-
-        .tools-container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-
-        .back-button {
-        position: absolute;
-        top: 20px; /* Adjust the distance from the top */
-        right: 20px; /* Adjust the distance from the right */
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        text-decoration: none;
-    }
 
         .spinner {
             display: none;
@@ -115,6 +106,18 @@
             position: relative;
             width: 100%;
             height: 100%;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px; /* Adjust the distance from the top */
+            right: 20px; /* Adjust the distance from the right */
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -141,6 +144,7 @@
             </div>
         </div>
 
+        <!-- Repeat similar structure for other tool cards -->
         <div class="tool-card">
             <div class="tool-icon">
                 <i class="fas fa-rocket"></i>
@@ -149,8 +153,8 @@
                 <h3>Continuous Deployment (CD)</h3>
                 <p>Install ArgoCD for continuous deployment.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="cd-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="cd-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
@@ -158,7 +162,6 @@
                 <button class="install-btn" onclick="installTool('cd')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('cd')">Delete</button>
             </div>
-            
         </div>
 
         <div class="tool-card">
@@ -169,19 +172,17 @@
                 <h3>Kafka </h3>
                 <p>Install kafka.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="kafka-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="kafka-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
             <div>
                 <button class="install-btn" onclick="installTool('kafka')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('kafka')">Delete</button>
-                <button class="password-btn" onclick="fetchKafkaClusterDetails()">Kafka Cluster Details</button>
+                <button class="password-btn" onclick="openKafkaClusterDetails()">Kafka Cluster Details</button>
             </div>
-            
         </div>
-
 
         <div class="tool-card">
             <div class="tool-icon">
@@ -191,15 +192,14 @@
                 <h3>Monitoring</h3>
                 <p>Install Prometheus and Grafana for monitoring.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="monitoring-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="monitoring-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
             <div>
                 <button class="install-btn" onclick="installTool('monitoring')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('monitoring')">Delete</button>
-                <!-- Button to fetch Grafana password -->
                 <button class="password-btn" onclick="fetchGrafanaPassword()">Grafana Password</button>
             </div>
         </div>
@@ -212,8 +212,8 @@
                 <h3>Service Mesh</h3>
                 <p>Install Istio for service mesh.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="istio-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="istio-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
@@ -231,8 +231,8 @@
                 <h3>Vault</h3>
                 <p>Install Vault.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="vault-spinner"> <!-- Added spinner ID -->
+            <div class="spinner-container">
+                <div class="spinner" id="vault-spinner">
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
@@ -241,6 +241,27 @@
                 <button class="delete-btn" onclick="deleteTool('vault')">Delete</button>
             </div>
         </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="tool-info">
+                <h3>crossplane </h3>
+                <p>Install Cross Plane.</p>
+            </div>
+            <div class="spinner-container">
+                <div class="spinner" id="crossplane-spinner">
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('crossplane')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('crossplane')">Delete</button>
+                <button class="password-btn" onclick="crossplane()">CrossPlane</button>
+            </div>
+        </div>
+
     </div>
 
     <div class="message" id="message"></div>
@@ -248,11 +269,8 @@
     <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="back-button">Back to Cluster</a>
 
     <script>
-        
         function installTool(tool) {
-            // Show spinner for the corresponding tool
             document.getElementById(`${tool}-spinner`).style.display = 'block';
-            // Hide message
             document.getElementById('message').style.display = 'none';
 
             fetch('/devops_tools/{{ cluster_name }}', {
@@ -264,9 +282,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                // Hide spinner
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
                 document.getElementById('message').style.display = 'block';
                 document.getElementById('message').innerHTML = data.message;
                 if (data.success) {
@@ -281,9 +297,7 @@
             })
             .catch(error => {
                 console.error('Error installing tool:', error);
-                // Hide spinner
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
                 document.getElementById('message').style.display = 'block';
                 document.getElementById('message').innerHTML = 'An error occurred while installing the tool.';
                 alert('An error occurred while installing the tool.');
@@ -292,9 +306,7 @@
 
         function deleteTool(tool) {
             if (confirm(`Are you sure you want to delete ${tool.toUpperCase()}?`)) {
-                // Show spinner for the corresponding tool
                 document.getElementById(`${tool}-spinner`).style.display = 'block';
-                // Hide message
                 document.getElementById('message').style.display = 'none';
 
                 fetch('/devops_tools/{{ cluster_name }}', {
@@ -306,9 +318,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Hide spinner
                     document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
                     document.getElementById('message').style.display = 'block';
                     document.getElementById('message').innerHTML = data.message;
                     if (data.success) {
@@ -319,9 +329,7 @@
                 })
                 .catch(error => {
                     console.error('Error deleting tool:', error);
-                    // Hide spinner
                     document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
                     document.getElementById('message').style.display = 'block';
                     document.getElementById('message').innerHTML = 'An error occurred while deleting the tool.';
                     alert('An error occurred while deleting the tool.');
@@ -329,33 +337,14 @@
             }
         }
 
-
-        function fetchKafkaClusterDetails() {
-            fetch('/kafka_cluster_details')
-            .then(response => {
-                if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-            })
-            .then(data => {
-                // Handle the received data
-                console.log(data); // For debugging
-                // Example: Update HTML elements with the received data
-                document.getElementById('clusterName').innerText = data.cluster_name;
-                document.getElementById('desiredKafkaReplicas').innerText = data.desired_kafka_replicas;
-                // Update other HTML elements as needed
-            })
-            .catch(error => {
-                console.error('Error fetching Kafka cluster details:', error);
-            //  Handle errors, e.g., display an error message to the user
-                alert('An error occurred while fetching Kafka cluster details.');
-            });
+        function openKafkaClusterDetails() {
+            window.open("/kafka", "_blank");
         }
 
+        function crossplane() {
+            window.open("/crossplane", "_blank");
+        }
 
-
-        // Function to fetch Grafana password
         function fetchGrafanaPassword() {
             fetch('/get_grafana_password')
             .then(response => response.json())
