@@ -666,24 +666,46 @@ def devops_tools(cluster_name):
                 if is_jaeger_installed():
                     return jsonify({'success': True, 'message': 'Jaeger is already installed'})
                 
-                
+                try:
+                    subprocess.run(['kubectl', 'apply', '-f', 'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'], check=True)
+                except subprocess.CalledProcessError as e:
+                    return jsonify({'success': False, 'message': f'Error installing cert-manager: {str(e)}'}), 500
+
+    # Check cert-manager pods
+                try:
+                    subprocess.run(['kubectl', 'get', 'pods', '-n', 'cert-manager'], check=True)
+                except subprocess.CalledProcessError as e:
+                    return jsonify({'success': False, 'message': f'Error checking cert-manager pods: {str(e)}'}), 500
+
+
+
+
                 # Install Vault
                 subprocess.run(['kubectl', 'create', 'namespace', 'observability'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'jaegertracing', 'https://jaegertracing.github.io/helm-charts'], check=True)
                 
                 subprocess.run(['helm', 'repo', 'update'], check=True)
                 subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator','-n','observability'], check=True)
+
+
+                
                 try:
-                    subprocess.run(['kubectl', 'get', 'deployment', 'jaeger-operator', '-n', 'observability'], check=True)
+                    subprocess.run(['kubectl', 'get', 'deployment', 'my-release-jaeger-operator', '-n', 'observability'], check=True)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error checking Jaeger operator deployment: {str(e)}'}), 500
 
+
+                import time
+                time.sleep(25)
+
+ 
                 jaeger_instance_yaml = '''
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: simplest
-'''
+            apiVersion: jaegertracing.io/v1
+            kind: Jaeger
+            metadata:
+                name: simplest
+                namespace: observability
+                '''
                 try:
                     subprocess.run(['kubectl', 'apply', '-f', '-'], input=jaeger_instance_yaml.encode(), check=True)
                 except subprocess.CalledProcessError as e:
