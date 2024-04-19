@@ -668,10 +668,16 @@ def devops_tools(cluster_name):
                 
                 try:
                     subprocess.run(['kubectl', 'apply', '-f', 'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'], check=True)
+                    import time
+                    time.sleep(30)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error installing cert-manager: {str(e)}'}), 500
 
     # Check cert-manager pods
+
+                import time
+                time.sleep(30)
+
                 try:
                     subprocess.run(['kubectl', 'get', 'pods', '-n', 'cert-manager'], check=True)
                 except subprocess.CalledProcessError as e:
@@ -686,6 +692,8 @@ def devops_tools(cluster_name):
                 
                 subprocess.run(['helm', 'repo', 'update'], check=True)
                 subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator','-n','observability'], check=True)
+                import time
+                time.sleep(30)
 
 
                 
@@ -1596,14 +1604,7 @@ def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
-def get_instance_ip():
-    try:
-        instance_id = requests.get('http://169.254.169.254/latest/meta-data/instance-id').text
-        ip_address = subprocess.check_output(['aws', 'ec2', 'describe-instances', '--instance-ids', instance_id, '--query', 'Reservations[*].Instances[*].PublicIpAddress', '--output', 'text'])
-        return ip_address.decode().strip()
-    except Exception as e:
-        print(f"Error getting instance IP: {str(e)}")
-        return 'localhost'
+
 
 @app.route('/jaeger', methods=['GET'])
 def jaeger():
@@ -1614,38 +1615,73 @@ def jaeger():
         dashboard_url = f'http://{instance_ip}:16686'
     return render_template('jaeger.html', dashboard_url=dashboard_url)
 
+
+
 @app.route('/jaeger/dashboard', methods=['GET'])
 def jaeger_dashboard():
     try:
         if is_port_in_use(16686):
             print("Port 16686 is already in use, skipping port forwarding.")
         else:
-            subprocess.run(['kubectl', 'port-forward', 'svc/simplest-query', '16686:16686', '-n', 'observability', '--address', '0.0.0.0'], check=True)
-        instance_ip = get_instance_ip()
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/simplest-query', '16686:16686', '-n', 'observability', '--address', '0.0.0.0'])
+        instance_ip = "localhost"
         if instance_ip == 'localhost':
             dashboard_url = 'http://localhost:16686'
         else:
-            dashboard_url = f'http://{instance_ip}:16686'
+            dashboard_url = f'http://public-ip:16686'
         return render_template('jaeger_dashboard.html', dashboard_url=dashboard_url)
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         return jsonify({'success': False, 'error': f'Error port-forwarding Jaeger query service: {str(e)}'}), 500
+
+
 
 @app.route('/jaeger/deploy_app', methods=['POST'])
 def deploy_jaeger_app():
     try:
         # Check if the sample app is already deployed
-        result = subprocess.run(['kubectl', 'get', 'deployment', 'sample-app', '-n', 'observability'], capture_output=True, text=True)
+        result = subprocess.run(['kubectl', 'get', 'deployment', 'service-b', '-n', 'observability'], capture_output=True, text=True)
         if 'sample-app' in result.stdout:
             return jsonify({'success': True, 'message': 'Sample application is already deployed.'})
 
         # Deploy the sample application for testing Jaeger
         subprocess.run(['kubectl', 'apply', '-f', 'jaeger/sample-app.yaml', '-n', 'observability'], check=True)
-        return jsonify({'success': True, 'message': 'Sample application deployed successfully.'})
+        
+        # Render the HTML template after deploying the sample application
+        return render_template('deploy_jaeger_app.html', message='Sample application deployed successfully.')
+
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': f'Error deploying sample application: {str(e)}'}), 500
 
 
 
+
+
+@app.route('/tekton', methods=['GET'])
+def tekton():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_tekton = 'http://localhost:9097'
+    else:
+        dashboard_url_tekton = f'http://{instance_ip}:9097'
+    return render_template('tekton.html', dashboard_url_tekton=dashboard_url_tekton)
+
+
+
+@app.route('/tekton/dashboard', methods=['GET'])
+def tekton_dashboard():
+    try:
+        if is_port_in_use(9097):
+            print("Port 9097 is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/tekton-dashboard', '9097:9097', '-n', 'tekton-pipelines', '--address', '0.0.0.0'])
+        instance_ip = "localhost"
+        if instance_ip == 'localhost':
+            dashboard_url_tekton = 'http://localhost:9097'
+        else:
+            dashboard_url_tekton = f'http://public-ip:9097'
+        return render_template('tekton_dashboard.html', dashboard_url_tekton=dashboard_url_tekton)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Tekton dashboard service: {str(e)}'}), 500
 
 
 
