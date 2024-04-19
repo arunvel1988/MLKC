@@ -1589,6 +1589,64 @@ def delete_topic():
 
 
 
+import subprocess
+import socket
+
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+def get_instance_ip():
+    try:
+        instance_id = requests.get('http://169.254.169.254/latest/meta-data/instance-id').text
+        ip_address = subprocess.check_output(['aws', 'ec2', 'describe-instances', '--instance-ids', instance_id, '--query', 'Reservations[*].Instances[*].PublicIpAddress', '--output', 'text'])
+        return ip_address.decode().strip()
+    except Exception as e:
+        print(f"Error getting instance IP: {str(e)}")
+        return 'localhost'
+
+@app.route('/jaeger', methods=['GET'])
+def jaeger():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url = 'http://localhost:16686'
+    else:
+        dashboard_url = f'http://{instance_ip}:16686'
+    return render_template('jaeger.html', dashboard_url=dashboard_url)
+
+@app.route('/jaeger/dashboard', methods=['GET'])
+def jaeger_dashboard():
+    try:
+        if is_port_in_use(16686):
+            print("Port 16686 is already in use, skipping port forwarding.")
+        else:
+            subprocess.run(['kubectl', 'port-forward', 'svc/simplest-query', '16686:16686', '-n', 'observability', '--address', '0.0.0.0'], check=True)
+        instance_ip = get_instance_ip()
+        if instance_ip == 'localhost':
+            dashboard_url = 'http://localhost:16686'
+        else:
+            dashboard_url = f'http://{instance_ip}:16686'
+        return render_template('jaeger_dashboard.html', dashboard_url=dashboard_url)
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Jaeger query service: {str(e)}'}), 500
+
+@app.route('/jaeger/deploy_app', methods=['POST'])
+def deploy_jaeger_app():
+    try:
+        # Check if the sample app is already deployed
+        result = subprocess.run(['kubectl', 'get', 'deployment', 'sample-app', '-n', 'observability'], capture_output=True, text=True)
+        if 'sample-app' in result.stdout:
+            return jsonify({'success': True, 'message': 'Sample application is already deployed.'})
+
+        # Deploy the sample application for testing Jaeger
+        subprocess.run(['kubectl', 'apply', '-f', 'jaeger/sample-app.yaml', '-n', 'observability'], check=True)
+        return jsonify({'success': True, 'message': 'Sample application deployed successfully.'})
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': f'Error deploying sample application: {str(e)}'}), 500
+
+
+
+
 
 
 
