@@ -662,6 +662,37 @@ def devops_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
             
+            elif selected_tool == 'jaeger':
+                if is_jaeger_installed():
+                    return jsonify({'success': True, 'message': 'Jaeger is already installed'})
+                
+                
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'observability'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'jaegertracing', 'https://jaegertracing.github.io/helm-charts'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator','-n','observability'], check=True)
+                try:
+                    subprocess.run(['kubectl', 'get', 'deployment', 'jaeger-operator', '-n', 'observability'], check=True)
+                except subprocess.CalledProcessError as e:
+                    return jsonify({'success': False, 'message': f'Error checking Jaeger operator deployment: {str(e)}'}), 500
+
+                jaeger_instance_yaml = '''
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: simplest
+'''
+                try:
+                    subprocess.run(['kubectl', 'apply', '-f', '-'], input=jaeger_instance_yaml.encode(), check=True)
+                except subprocess.CalledProcessError as e:
+                    return jsonify({'success': False, 'message': f'Error creating Jaeger instance: {str(e)}'}), 500
+
+    
+                
+                return jsonify({'success': True, 'message': 'Jaeger installed successfully'})
+            
 
             elif selected_tool == 'istio':
                 # Install Istio Service Mesh
@@ -709,6 +740,14 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+            
+
+            elif selected_tool == 'jaeger':
+                # Delete jaeger
+                if not is_jaeger_installed():
+                    return jsonify({'success': True, 'message': 'Jaeger is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'observability'], check=True)
+                return jsonify({'success': True, 'message': 'Jaeger deleted successfully'})
             
 
             elif selected_tool == 'crossplane':
@@ -771,7 +810,16 @@ def is_tekton_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
 
-    
+
+def is_jaeger_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'observability', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
 
 def is_crossplane_installed():
     try:
