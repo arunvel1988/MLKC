@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Jaeger Dashboard</title>
+    <title>Grafana Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -90,15 +90,21 @@
 </head>
 <body>
     <div class="container">
-        <h1>Jaeger Dashboard</h1>
-        <p class="message">Click the link below to access the Jaeger dashboard:</p>
-        <p class="dashboard-link"><a href="{{ dashboard_url }}" target="_blank">{{ dashboard_url }}</a></p>
-        <a class="back-button" href="/jaeger">Back</a>
+        <h1>Grafana Dashboard</h1>
+        <p class="message">Click the link below to access the Grafana dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_grafana }}" target="_blank">{{ dashboard_url_grafana }}</a></p>
+        <a class="back-button" href="/grafana">Back</a>
         
         <div class="info">
-            <h2>About Jaeger</h2>
-            <p>Jaeger is an open-source, end-to-end distributed tracing system for microservices.</p>
-            <p>Learn more about Jaeger on the <a href="https://www.jaegertracing.io/" target="_blank">official Jaeger website</a>.</p>
+            <h2>About Grafana</h2>
+            <p>Grafana is an open-source analytics and monitoring solution for visualization and analysis of metrics and logs.</p>
+            <p>Learn more about Grafana on the <a href="https://grafana.com/" target="_blank">official Grafana website</a>.</p>
+        </div>
+
+        <div class="info">
+            <h2>Get Grafana Password</h2>
+            <p style="color: red;">To get the Grafana admin password, check the Grafana documentation (username = admin, password = prom-operator).</p>
+
         </div>
     </div>
 
@@ -107,10 +113,10 @@
     </div>
 
     <script>
-        // Show popup message after 3 seconds
+        // Show popup message after 1 second
         setTimeout(function() {
             document.querySelector('.popup').style.display = 'block';
-        }, 3000);
+        }, 1000);
     </script>
 </body>
 </html>

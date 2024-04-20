@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Jaeger Dashboard</title>
+    <title>ArgoCD Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -90,15 +90,21 @@
 </head>
 <body>
     <div class="container">
-        <h1>Jaeger Dashboard</h1>
-        <p class="message">Click the link below to access the Jaeger dashboard:</p>
-        <p class="dashboard-link"><a href="{{ dashboard_url }}" target="_blank">{{ dashboard_url }}</a></p>
-        <a class="back-button" href="/jaeger">Back</a>
+        <h1>ArgoCD Dashboard</h1>
+        <p class="message">Click the link below to access the ArgoCD dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_argocd }}" target="_blank">{{ dashboard_url_argocd }}</a></p>
+        <a class="back-button" href="/argocd">Back</a>
         
         <div class="info">
-            <h2>About Jaeger</h2>
-            <p>Jaeger is an open-source, end-to-end distributed tracing system for microservices.</p>
-            <p>Learn more about Jaeger on the <a href="https://www.jaegertracing.io/" target="_blank">official Jaeger website</a>.</p>
+            <h2>About ArgoCD</h2>
+            <p>ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes.</p>
+            <p>Learn more about ArgoCD on the <a href="https://argoproj.github.io/argo-cd/" target="_blank">official ArgoCD website</a>.</p>
+        </div>
+
+        <div class="info">
+            <h2>Get ArgoCD Password</h2>
+            <p>To get the ArgoCD initial admin password, run the following command:</p>
+            <code>kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d</code>
         </div>
     </div>
 
@@ -107,10 +113,10 @@
     </div>
 
     <script>
-        // Show popup message after 3 seconds
+        // Show popup message after 1 seconds
         setTimeout(function() {
             document.querySelector('.popup').style.display = 'block';
-        }, 3000);
+        }, 5000);
     </script>
 </body>
 </html>

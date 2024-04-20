@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Jaeger Dashboard</title>
+    <title>Tekton Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -28,6 +28,7 @@
             font-size: 18px;
             font-weight: bold;
             color: #555;
+            margin-bottom: 20px;
         }
 
         .back-button {
@@ -44,13 +45,106 @@
         .back-button:hover {
             background-color: #d32f2f;
         }
+
+        .dashboard-link {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .dashboard-link:hover {
+            color: #0056b3;
+        }
+
+        .info {
+            margin-top: 30px;
+        }
+
+        .info p {
+            margin-bottom: 10px;
+        }
+
+        .info a {
+            color: #007bff;
+            text-decoration: underline;
+        }
+
+        .info a:hover {
+            color: #0056b3;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Tekton Dashboard</h1>
-        <p class="message">{{ dashboard_url_tekton }}</p>
+        <p class="message">Click the link below to access the Tekton dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_tekton }}" target="_blank">{{ dashboard_url_tekton }}</a></p>
         <a class="back-button" href="/tekton">Back</a>
+        
+        <div class="info">
+            <h2>About Tekton</h2>
+            <p>Tekton is a powerful and flexible open-source framework for creating continuous integration and continuous delivery (CI/CD) systems.</p>
+            <p>Learn more about Tekton on the <a href="https://tekton.dev/" target="_blank">official Tekton website</a>.</p>
+        </div>
     </div>
+
+    <!-- Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <p>For cloud deployments, please use the public IP address of your instance.</p>
+        </div>
+    </div>
+
+    <script>
+        // Get the modal
+        var modal = document.getElementById("myModal");
+
+        // When the page loads, show the modal
+        window.onload = function() {
+            modal.style.display = "block";
+        }
+
+        // Close the modal
+        function closeModal() {
+            modal.style.display = "none";
+        }
+    </script>
 </body>
 </html>

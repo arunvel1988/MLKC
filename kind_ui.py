@@ -1617,22 +1617,28 @@ def jaeger():
 
 
 
+import random
+
 @app.route('/jaeger/dashboard', methods=['GET'])
 def jaeger_dashboard():
     try:
-        if is_port_in_use(16686):
-            print("Port 16686 is already in use, skipping port forwarding.")
+        # Randomly select a port between 15000 and 15999
+        jaeger_port = random.randint(15000, 15999)
+        
+        if is_port_in_use(jaeger_port):
+            print(f"Port {jaeger_port} is already in use, skipping port forwarding.")
         else:
-            subprocess.Popen(['kubectl', 'port-forward', 'svc/simplest-query', '16686:16686', '-n', 'observability', '--address', '0.0.0.0'])
-        instance_ip = "localhost"
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/simplest-query', f'{jaeger_port}:16686', '-n', 'observability', '--address', '0.0.0.0'])
+
+        instance_ip = "localhost"  # You may adjust this based on your configuration
         if instance_ip == 'localhost':
-            dashboard_url = 'http://localhost:16686'
+            dashboard_url = f'http://localhost:{jaeger_port}'
         else:
-            dashboard_url = f'http://public-ip:16686'
+            dashboard_url = f'http://public-ip:{jaeger_port}'
+        
         return render_template('jaeger_dashboard.html', dashboard_url=dashboard_url)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error port-forwarding Jaeger query service: {str(e)}'}), 500
-
 
 
 @app.route('/jaeger/deploy_app', methods=['POST'])
@@ -1667,21 +1673,121 @@ def tekton():
 
 
 
+
+
 @app.route('/tekton/dashboard', methods=['GET'])
 def tekton_dashboard():
     try:
-        if is_port_in_use(9097):
-            print("Port 9097 is already in use, skipping port forwarding.")
+        # Randomly select a port between 9000 and 9999
+        tekton_port = random.randint(9000, 9999)
+        
+        if is_port_in_use(tekton_port):
+            print(f"Port {tekton_port} is already in use, skipping port forwarding.")
         else:
-            subprocess.Popen(['kubectl', 'port-forward', 'svc/tekton-dashboard', '9097:9097', '-n', 'tekton-pipelines', '--address', '0.0.0.0'])
-        instance_ip = "localhost"
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/tekton-dashboard', f'{tekton_port}:9097', '-n', 'tekton-pipelines', '--address', '0.0.0.0'])
+
+        instance_ip = "localhost"  # You may adjust this based on your configuration
         if instance_ip == 'localhost':
-            dashboard_url_tekton = 'http://localhost:9097'
+            dashboard_url_tekton = f'http://localhost:{tekton_port}'
         else:
-            dashboard_url_tekton = f'http://public-ip:9097'
+            dashboard_url_tekton = f'http://public-ip:{tekton_port}'
+        
         return render_template('tekton_dashboard.html', dashboard_url_tekton=dashboard_url_tekton)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error port-forwarding Tekton dashboard service: {str(e)}'}), 500
+
+
+
+
+#######################################################
+# /argo
+#########################################################
+
+
+
+@app.route('/argocd', methods=['GET'])
+def argocd():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_argocd = 'http://localhost:9098'
+    else:
+        dashboard_url_argocd = f'http://{instance_ip}:9098'
+    return render_template('argocd.html', dashboard_url_argocd=dashboard_url_argocd)
+
+
+
+@app.route('/argocd/dashboard', methods=['GET'])
+def argocd_dashboard():
+    try:
+        # Randomly select a port between 9000 and 9999
+        argocd_port = random.randint(9000, 9999)
+        
+        if is_port_in_use(argocd_port):
+            print(f"Port {argocd_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/argocd-server', f'{argocd_port}:443', '-n', 'argocd', '--address', '0.0.0.0'])
+
+        instance_ip = "localhost"  # You may adjust this based on your configuration
+        if instance_ip == 'localhost':
+            dashboard_url_argocd = f'http://localhost:{argocd_port}'
+        else:
+            dashboard_url_argocd = f'http://public-ip:{argocd_port}'
+        
+        return render_template('argocd_dashboard.html', dashboard_url_argocd=dashboard_url_argocd)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding ArgoCD dashboard service: {str(e)}'}), 500
+
+
+#######################################################
+# /argo ------------------------------END
+#########################################################
+
+
+#######################################################
+# /grafana -----------------------------
+#########################################################
+import random
+
+
+# Function to check if a port is in use
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+# Function to get an available port for port forwarding
+def get_available_port():
+    port = random.randint(8000, 9999)  # Modify port range as needed
+    while is_port_in_use(port):
+        port = random.randint(8000, 9999)  # Modify port range as needed
+    return port
+
+
+@app.route('/grafana', methods=['GET'])
+def grafana():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_grafana = 'http://localhost:3000'
+    else:
+        dashboard_url_grafana = f'http://{instance_ip}:3000'
+    return render_template('grafana.html', dashboard_url_grafana=dashboard_url_grafana)
+
+
+@app.route('/grafana/dashboard', methods=['GET'])
+def grafana_dashboard():
+    try:
+        port = get_available_port()
+        subprocess.Popen(['kubectl', 'port-forward', 'svc/prometheus-grafana', f'{port}:80', '-n', 'monitoring', '--address', '0.0.0.0'])
+        dashboard_url_grafana = f'http://localhost:{port}'
+        return render_template('grafana_dashboard.html', dashboard_url_grafana=dashboard_url_grafana)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Grafana dashboard service: {str(e)}'}), 500
+
+
+
+#######################################################
+# /grafana -----------------------------  END
+#########################################################
+
 
 
 
@@ -1690,60 +1796,6 @@ def tekton_dashboard():
 ######################################################################################
 ########################### cross plane
 ###################################################################################
-
-
-
-@app.route('/crossplane', methods=['GET', 'POST'])
-def crossplane():
-    if request.method == 'POST':
-        # Step 1: Create provider
-        provider_yaml_path = 'tools/crossplane/provider_iam.yaml'
-        subprocess.run(['kubectl', 'apply', '-f', provider_yaml_path])
-
-        # Step 2: Get AWS credentials from the form
-        aws_access_key = request.form['aws_access_key']
-        aws_secret_key = request.form['aws_secret_key']
-
-        # Step 3: Create secret for AWS credentials
-        aws_credentials = f'[default]\naws_access_key_id = {aws_access_key}\naws_secret_access_key = {aws_secret_key}'
-        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'aws-secret', '-n', 'crossplane-system', '--from-literal=creds=' + aws_credentials])
-
-        # Step 4: Create provider config using the secret
-        provider_config_yaml = """
-        apiVersion: aws.upbound.io/v1beta1
-        kind: ProviderConfig
-        metadata:
-          name: default
-        spec:
-          credentials:
-            source: Secret
-            secretRef:
-              namespace: crossplane-system
-              name: aws-secret
-              key: creds
-        """
-        subprocess.run(['kubectl', 'apply', '-f', '-'], input=provider_config_yaml.encode())
-
-        return render_template('upload_yaml_crossplane.html')
-
-    return render_template('crossplane.html')
-
-
-@app.route('/create_aws_resource', methods=['GET', 'POST'])
-def create_aws_resource():
-    if request.method == 'POST':
-        # Step 5: Create AWS resource using uploaded YAML file
-        yaml_file = request.files['yaml_file']
-        yaml_content = yaml_file.read()
-
-        subprocess.run(['kubectl', 'create', '-f', '-'], input=yaml_content)
-
-        return 'AWS resource created successfully.'
-
-    # Render the HTML template for uploading YAML file
-    return render_template('resource_crossplane.html')
-
-
 
 
 
