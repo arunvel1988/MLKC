@@ -932,6 +932,24 @@ def security_tools(cluster_name):
                 
                 subprocess.run(['helm', 'install', 'kyverno', 'kyverno/kyverno', '-n','kyverno'], check=True)
                 return jsonify({'success': True, 'message': 'Kyverno installed successfully'})
+            
+
+            elif selected_tool == 'trivy':
+                if is_trivy_installed():
+                    return jsonify({'success': True, 'message': 'Trivy is already installed'})
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'trivy-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'aqua', 'https://aquasecurity.github.io/helm-charts/'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'trivy-operator', 'aqua/trivy-operator','-n','trivy-system','--set','trivy.ignoreUnfixed=true'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'Trivy installed successfully'})
+
+
+
             elif selected_tool == 'falco':
                 # Install Falco
                 if is_falco_installed():
@@ -967,6 +985,13 @@ def security_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'Kyverno is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
                 return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
+
+            elif selected_tool == 'trivy':
+                if not is_trivy_installed():
+                    return jsonify({'success': True, 'message': 'trivy is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'trivy-system'], check=True)
+                return jsonify({'success': True, 'message': 'Trivy deleted successfully'})
+            
             elif selected_tool == 'falco':
                 if not is_falco_installed():
                     return jsonify({'success': True, 'message': 'Falco is not installed'})
@@ -979,6 +1004,17 @@ def security_tools(cluster_name):
     else:
         return render_template('security_tools.html', cluster_name=cluster_name)
 
+
+
+
+def is_trivy_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'trivy-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
 
 
 def is_kyverno_installed():
@@ -1794,11 +1830,35 @@ def grafana_dashboard():
 
 
 ######################################################################################
-########################### cross plane
+########################### trivy
 ###################################################################################
 
 
 
+
+
+
+@app.route('/trivy', methods=['GET'])
+def trivy():
+    try:
+        vulnerability_reports = subprocess.check_output(['kubectl', 'get', 'vulnerabilityreports', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+        config_audit_reports = subprocess.check_output(['kubectl', 'get', 'configauditreports', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+        trivy_operator_logs = subprocess.check_output(['kubectl', 'logs', '-n', 'trivy-system', 'deployment/trivy-operator']).decode('utf-8')
+        infra_assessment_reports = subprocess.check_output(['kubectl', 'get', 'infraassessmentreports', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+        rbac_assessment_reports = subprocess.check_output(['kubectl', 'get', 'rbacassessmentreports', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+        exposed_secrets_report = subprocess.check_output(['kubectl', 'get', 'exposedsecretreport', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+        cluster_compliance_report = subprocess.check_output(['kubectl', 'get', 'clustercompliancereport', '--all-namespaces', '-o', 'wide']).decode('utf-8')
+
+        return render_template('trivy.html', 
+                                vulnerability_reports=vulnerability_reports,
+                                config_audit_reports=config_audit_reports,
+                                trivy_operator_logs=trivy_operator_logs,
+                                infra_assessment_reports=infra_assessment_reports,
+                                rbac_assessment_reports=rbac_assessment_reports,
+                                exposed_secrets_report=exposed_secrets_report,
+                                cluster_compliance_report=cluster_compliance_report)
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 
