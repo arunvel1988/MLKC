@@ -167,6 +167,28 @@
                 <button class="delete-btn" onclick="deleteTool('falco')">Delete</button>
             </div>
         </div>
+
+
+
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Trivy</h3>
+                <p>Install Trivy.</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="trivy-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('trivy')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('trivy')">Delete</button>
+                <button class="install-btn" onclick="trivy('trivy')">Trivy</button>
+            </div>
+        </div>
     </div>
 
     <div class="message" id="message"></div>
@@ -211,6 +233,9 @@
                 document.getElementById('message').innerHTML = 'An error occurred while installing the tool.';
                 alert('An error occurred while installing the tool.');
             });
+        }
+        function trivy() {
+            window.open("/trivy", "_blank");
         }
 
         function deleteTool(tool) {

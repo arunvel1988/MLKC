@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivy Reports</title>
+    <style>
+        /* Your CSS styles here */
+    </style>
+</head>
+<body>
+    <h1>Trivy Reports</h1>
+
+    <h2>Vulnerability Reports</h2>
+    <pre>{{ vulnerability_reports }}</pre>
+
+    <h2>Config Audit Reports</h2>
+    <pre>{{ config_audit_reports }}</pre>
+
+    <h2>Trivy Operator Logs</h2>
+    <pre>{{ trivy_operator_logs }}</pre>
+
+    <h2>Infrastructure Assessment Reports</h2>
+    <pre>{{ infra_assessment_reports }}</pre>
+
+    <h2>RBAC Assessment Reports</h2>
+    <pre>{{ rbac_assessment_reports }}</pre>
+
+    <h2>Exposed Secrets Report</h2>
+    <pre>{{ exposed_secrets_report }}</pre>
+
+    <h2>Cluster Compliance Report</h2>
+    <pre>{{ cluster_compliance_report }}</pre>
+
+    <a href="/">Back</a>
+</body>
+</html>
