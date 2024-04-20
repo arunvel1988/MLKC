@@ -183,6 +183,7 @@
             <div>
                 <button class="install-btn" onclick="installTool('cd')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('cd')">Delete</button>
+                <button class="password-btn" onclick="argocd('cd')">Argocd Details</button>
             </div>
         </div>
 
@@ -223,6 +224,7 @@
                 <button class="install-btn" onclick="installTool('monitoring')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('monitoring')">Delete</button>
                 <button class="password-btn" onclick="fetchGrafanaPassword()">Grafana Password</button>
+                <button class="password-btn" onclick="grafana('monitoring')">Grafana Details</button>
             </div>
         </div>
 
@@ -280,7 +282,7 @@
             <div>
                 <button class="install-btn" onclick="installTool('crossplane')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('crossplane')">Delete</button>
-                <button class="password-btn" onclick="crossplane()">CrossPlane</button>
+                
             </div>
         </div>
 
@@ -371,10 +373,16 @@
             window.open("/tekton", "_blank");
         }
 
-
-        function crossplane() {
-            window.open("/crossplane", "_blank");
+        function grafana() {
+            window.open("/grafana", "_blank");
         }
+
+        function argocd() {
+            window.open("/argocd", "_blank");
+        }
+
+
+  
 
         function fetchGrafanaPassword() {
             fetch('/get_grafana_password')

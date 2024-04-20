@@ -55,16 +55,30 @@
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
+
+        .back-button {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        .back-button:hover {
+            color: #0056b3;
+        }
     </style>
 </head>
 <body>
     <h1>Upload YAML for AWS Resources</h1>
 
-    <form action="/create_aws_resource" method="post" enctype="multipart/form-data">
+    <form action="/crossplane/create_aws_resource" method="post" enctype="multipart/form-data">
         <label for="yaml_file">Upload YAML File:</label>
         <input type="file" id="yaml_file" name="yaml_file">
 
         <input type="submit" value="Create AWS Resource">
     </form>
+
+    <a href="/crossplane" class="back-button">Back</a>
 </body>
 </html>
