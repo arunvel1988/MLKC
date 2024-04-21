@@ -169,6 +169,27 @@
         </div>
 
 
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Chaos Mesh</h3>
+                <p>Install Chaos Mesh.</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="chaos-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('chaos')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('chaos')">Delete</button>
+                <button class="install-btn" onclick="chaosmesh('chaos')">Chaos Mesh Details</button>
+            </div>
+        </div>
+
+
 
         <div class="tool-card">
             <div class="tool-icon">
@@ -236,6 +257,11 @@
         }
         function trivy() {
             window.open("/trivy", "_blank");
+        }
+
+
+        function chaosmesh() {
+            window.open("/chaosmesh", "_blank");
         }
 
         function deleteTool(tool) {

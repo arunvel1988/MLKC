@@ -145,6 +145,26 @@
             </div>
         </div>
 
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Apache Airflow</h3>
+                <p>Install Apache Airflow</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="airflow-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('airflow')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('airflow')">Delete</button>
+                <button class="password-btn" onclick="airflow('airflow')">Apache Airflow Details</button>
+            </div>
+        </div>
+
         <div class="tools-container">
             <div class="tool-card">
                 <div class="tool-icon">
@@ -379,6 +399,10 @@
 
         function argocd() {
             window.open("/argocd", "_blank");
+        }
+
+        function airflow() {
+            window.open("/airflow", "_blank");
         }
 
         

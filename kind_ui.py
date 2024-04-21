@@ -620,6 +620,19 @@ def devops_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'crossplane installed successfully'})
             
+
+            elif selected_tool == 'airflow':
+                # Install Airflow
+                if is_airflow_installed():
+                    return jsonify({'success': True, 'message': 'Airflow is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'airflow'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'apache-airflow', 'https://airflow.apache.org'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'my-airflow', 'apache-airflow/airflow', '--namespace', 'airflow'], check=True)
+                
+                return jsonify({'success': True, 'message': 'airflow installed successfully'})
+            
             elif selected_tool == 'kafka':
                 # Install ArgoCD for CD
                 if is_kafka_installed():
@@ -772,6 +785,15 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
             
 
+
+            elif selected_tool == 'airflow':
+                # Delete Airflow
+                if not is_airflow_installed():
+                    return jsonify({'success': True, 'message': 'airflow is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'airflow'], check=True)
+                return jsonify({'success': True, 'message': 'Apache Airflow deleted successfully'})
+            
+
             elif selected_tool == 'jaeger':
                 # Delete jaeger
                 if not is_jaeger_installed():
@@ -834,6 +856,16 @@ def devops_tools(cluster_name):
 def is_tekton_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'tekton-pipelines', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+    
+
+def is_airflow_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'airflow', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -947,6 +979,20 @@ def security_tools(cluster_name):
                 
                 
                 return jsonify({'success': True, 'message': 'Trivy installed successfully'})
+            
+
+            elif selected_tool == 'chaos':
+                if is_chaos_installed():
+                    return jsonify({'success': True, 'message': 'chaos is already installed'})
+            
+                subprocess.run(['kubectl', 'create', 'namespace', 'chaos-mesh'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'chaos-mesh', 'https://charts.chaos-mesh.org'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'chaos-mesh', 'chaos-mesh/chaos-mesh','-n','chaos-mesh'], check=True)
+                return jsonify({'success': True, 'message': 'ChaosMesh installed successfully'})
+                
+                
 
 
 
@@ -991,6 +1037,16 @@ def security_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'trivy is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'trivy-system'], check=True)
                 return jsonify({'success': True, 'message': 'Trivy deleted successfully'})
+
+
+            elif selected_tool == 'chaos':
+                if not is_chaos_installed():
+                    return jsonify({'success': True, 'message': 'Chaos Mesh is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'chaos-mesh'], check=True)
+                return jsonify({'success': True, 'message': 'Chaos Mesh deleted successfully'})
+                    
+                
+                    
             
             elif selected_tool == 'falco':
                 if not is_falco_installed():
@@ -1016,6 +1072,14 @@ def is_trivy_installed():
     except subprocess.CalledProcessError:
         return False
 
+def is_chaos_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'chaos-mesh', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
 
 def is_kyverno_installed():
     try:
@@ -1695,6 +1759,42 @@ def deploy_jaeger_app():
         return jsonify({'success': False, 'error': f'Error deploying sample application: {str(e)}'}), 500
 
 
+import random
+
+
+
+
+@app.route('/airflow', methods=['GET'])
+def airflow():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_airflow = 'http://localhost:8080'  # Default Airflow port
+    else:
+        dashboard_url_airflow = f'http://{instance_ip}:8080'  # Adjust port if necessary
+    return render_template('airflow.html', dashboard_url_airflow=dashboard_url_airflow)
+
+@app.route('/airflow/dashboard', methods=['GET'])
+def airflow_dashboard():
+    try:
+        # Randomly select a port between 16000 and 16999
+        airflow_port = random.randint(16000, 16999)
+        
+        if is_port_in_use(airflow_port):
+            print(f"Port {airflow_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/my-airflow-webserver', f'{airflow_port}:8080', '-n', 'airflow', '--address', '0.0.0.0'])
+
+        instance_ip = get_instance_ip()  # Get the instance IP
+        if instance_ip == 'localhost':
+            dashboard_url_airflow = f'http://localhost:{airflow_port}'
+        else:
+            dashboard_url_airflow = f'http://{instance_ip}:{airflow_port}'
+        
+        return render_template('airflow_dashboard.html', dashboard_url_airflow=dashboard_url_airflow)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Airflow web service: {str(e)}'}), 500
+
+
 
 
 
@@ -1777,6 +1877,41 @@ def argocd_dashboard():
 #######################################################
 # /argo ------------------------------END
 #########################################################
+
+@app.route('/chaosmesh', methods=['GET'])
+def chaosmesh():
+    instance_ip = "localhost"
+    if instance_ip == 'localhost':
+        dashboard_url_chaosmesh = 'http://localhost:2333'
+    else:
+        dashboard_url_chaosmesh = f'http://{instance_ip}:2333'
+    return render_template('chaosmesh.html', dashboard_url_chaosmesh=dashboard_url_chaosmesh)
+
+
+@app.route('/chaosmesh/dashboard', methods=['GET'])
+def chaosmesh_dashboard():
+    try:
+        # Randomly select a port between 9000 and 9999
+        chaosmesh_port = random.randint(9000, 9999)
+        
+        if is_port_in_use(chaosmesh_port):
+            print(f"Port {chaosmesh_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/chaos-dashboard', f'{chaosmesh_port}:2333', '-n', 'chaos-mesh', '--address', '0.0.0.0'])
+
+        instance_ip = "localhost"  # You may adjust this based on your configuration
+        if instance_ip == 'localhost':
+            dashboard_url_chaosmesh = f'http://localhost:{chaosmesh_port}'
+        else:
+            dashboard_url_chaosmesh = f'http://public-ip:{chaosmesh_port}'
+        
+        return render_template('chaosmesh_dashboard.html', dashboard_url_chaosmesh=dashboard_url_chaosmesh)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Chaos Mesh dashboard service: {str(e)}'}), 500
+
+
+
+
 
 
 #######################################################
