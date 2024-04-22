@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Buildpacks</title>
+</head>
+<body>
+    <h1>Buildpacks</h1>
+    <form method="post" action="{{ url_for('buildpacks') }}">
+        <label for="github_url">GitHub Code URL:</label>
+        <input type="text" id="github_url" name="github_url" required>
+        <button type="submit">Build App</button>
+    </form>
+</body>
+</html>
