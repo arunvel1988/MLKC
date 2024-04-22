@@ -147,6 +147,26 @@
 
         <div class="tool-card">
             <div class="tool-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="tool-info">
+                <h3>BuildPacks</h3>
+                <p>Install BuildPacks</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="buildpacks-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('buildpacks')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('buildpacks')">Delete</button>
+                <button class="install-btn" onclick="buildpacks('buildpacks')">BuildPack Details</button>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">
                 <i class="fas fa-cogs"></i>
             </div>
             <div class="tool-info">
@@ -403,6 +423,10 @@
 
         function airflow() {
             window.open("/airflow", "_blank");
+        }
+
+        function buildpacks() {
+            window.open("/buildpacks", "_blank");
         }
 
         
