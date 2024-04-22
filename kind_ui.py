@@ -607,6 +607,33 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'create', 'namespace', 'argocd'], check=True)
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
+            
+            elif selected_tool == 'buildpacks':
+                # Install ArgoCD for CD
+                if is_buildpacks_installed():
+                    return jsonify({'success': True, 'message': 'buildpacks is already installed'})
+                
+                
+
+                url = "https://github.com/buildpacks/pack/releases/download/v0.33.2/pack-v0.33.2-linux.tgz"
+                curl_command = f"curl -sSL '{url}'"
+                tar_command = "sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack"
+
+                curl_process = subprocess.Popen(curl_command, stdout=subprocess.PIPE, shell=True)
+                tar_process = subprocess.Popen(tar_command, stdin=curl_process.stdout, shell=True)
+
+                curl_process.stdout.close()
+                exit_code = tar_process.wait()
+
+                if exit_code != 0:
+                    print("Error occurred during the installation process.")
+                    return jsonify({'success': True, 'message': 'Not installed installed successfully'})
+                else:
+                    print("Pack buildpack installed successfully.")
+                    return jsonify({'success': True, 'message': 'installed successfully'})
+
+
+
 
             elif selected_tool == 'crossplane':
                 # Install Crossplane
@@ -823,7 +850,34 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'vault'], check=True)
                 return jsonify({'success': True, 'message': 'Vault deleted successfully'})
             
+            elif selected_tool == 'buildpacks':
+                # Delete ArgoCD for CD
+                if not is_buildpacks_installed():
+                    return jsonify({'success': True, 'message': 'is not installed'})
+                
+                
 
+# Command to list files containing "pack" in /usr/local/bin/
+                list_command = "ls /usr/local/bin/ | grep pack"
+                list_process = subprocess.run(list_command, shell=True, capture_output=True, text=True)
+
+                if list_process.returncode == 0:
+                    files_found = list_process.stdout.strip()
+                    print(f"Files found: {files_found}")
+                else:
+                    print("No files found containing 'pack'.")
+
+# Command to remove the 'pack' binary
+                remove_command = "sudo rm /usr/local/bin/pack"
+                remove_process = subprocess.run(remove_command, shell=True, capture_output=True, text=True)
+
+                if remove_process.returncode == 0:
+                    return jsonify({'success': True, 'message': 'deleted successfully'})
+                    
+                else:
+                    print(f"Error removing the 'pack' binary: {remove_process.stderr}")
+                
+                
 
 
             elif selected_tool == 'monitoring':
@@ -862,6 +916,20 @@ def is_tekton_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
     
+
+
+
+def is_buildpacks_installed():
+    try:
+        # Run the 'pack' command and capture its exit code
+        subprocess.run(['pack'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        # If the command ran successfully, 'pack' is installed
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # If the command failed or the 'pack' binary was not found, return False
+        return False
+
+
 
 def is_airflow_installed():
     try:
@@ -1960,6 +2028,50 @@ def grafana_dashboard():
 #########################################################
 
 
+
+
+
+@app.route('/buildpacks', methods=['GET', 'POST'])
+def buildpacks():
+    if request.method == 'GET':
+        return render_template('buildpacks.html')
+    elif request.method == 'POST':
+        github_url = request.form.get('github_url')
+        if github_url:
+            try:
+                # Clone the repository
+                clone_command = f'git clone {github_url} app'
+                subprocess.run(clone_command, shell=True, check=True)
+
+                # Change to the app directory
+                subprocess.run('cd app', shell=True, check=True)
+
+                # Suggest a builder
+                suggest_command = 'pack builder suggest'
+                suggest_result = subprocess.run(suggest_command, shell=True, capture_output=True, text=True)
+                suggested_builder = suggest_result.stdout.strip()
+
+               
+
+                return render_template('builder_info.html', suggested_builder=suggested_builder)
+            except subprocess.CalledProcessError as e:
+                return jsonify({'success': False, 'error': str(e)}), 500
+        else:
+            return jsonify({'success': False, 'error': 'Please provide a GitHub URL.'}), 400
+
+    elif request.method == 'POST' and request.form.get('confirm_build'):
+        suggested_builder = request.form.get('suggested_builder')
+        if suggested_builder:
+            try:
+                # Build the app using pack
+                build_command = f'pack build app --builder {suggested_builder}'
+                subprocess.run(build_command, shell=True, check=True)
+
+                return jsonify({'success': True, 'message': 'App built successfully.'})
+            except subprocess.CalledProcessError as e:
+                return jsonify({'success': False, 'error': str(e)}), 500
+        else:
+            return jsonify({'success': False, 'error': 'No builder selected.'}), 400
 
 
 
