@@ -1679,10 +1679,8 @@ def describe(cluster_name):
 
 
 
+import re
 
-
-
-# Function to get Kafka cluster details
 @app.route('/kafka/', methods=['GET'])
 def kafka_cluster_details():
     try:
@@ -1691,40 +1689,36 @@ def kafka_cluster_details():
         kafka_output = result.stdout
         print(kafka_output)
 
-        # Split the output into lines and extract the relevant details
-        lines = kafka_output.strip().split('\n')
-        headers = lines[0].split()
-        data = lines[1].split()
+        # Use regular expressions to extract the relevant details
+        pattern = re.compile(r'(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(\S+)?')
+        match = pattern.search(kafka_output)
+        if match:
+            kafka_cluster_name = match.group(1)
+            desired_kafka_replicas = int(match.group(2))
+            desired_zk_replicas = int(match.group(3))
+            ready = match.group(4) == 'True'
+            warnings = match.group(5) if match.group(5) else ""
 
-        # Find the indices of the desired fields
-        name_index = headers.index('NAME')
-        desired_kafka_replicas_index = headers.index('DESIRED KAFKA REPLICAS')
-        desired_zk_replicas_index = headers.index('DESIRED ZK REPLICAS')
-        ready_index = headers.index('READY')
-        warnings_index = headers.index('WARNINGS')
+            # Construct the response
+            response = {
+                'success': True,
+                'kafka_cluster_name': kafka_cluster_name,
+                'desired_kafka_replicas': desired_kafka_replicas,
+                'desired_zk_replicas': desired_zk_replicas,
+                'ready': ready,
+                'warnings': warnings
+            }
 
-        # Extract the desired details
-        kafka_cluster_name = data[name_index]
-        desired_kafka_replicas = int(data[desired_kafka_replicas_index])
-        desired_zk_replicas = int(data[desired_zk_replicas_index])
-        ready = data[ready_index]
-        warnings = data[warnings_index]
+            return render_template('kafka_cluster.html', data=response)
+        else:
+            raise ValueError("Data does not match expected format")
 
-        # Construct the response
-        response = {
-            'success': True,
-            'kafka_cluster_name': kafka_cluster_name,
-            'desired_kafka_replicas': desired_kafka_replicas,
-            'desired_zk_replicas': desired_zk_replicas,
-            'ready': ready,
-            'warnings': warnings
-        }
-
-        return render_template('kafka_cluster.html', data=response)
-
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, ValueError) as e:
         error_message = f"Error retrieving Kafka cluster details: {str(e)}"
         return jsonify({'success': False, 'error': error_message})
+
+
+
 @app.route('/kafka/create_topic', methods=['POST'])
 def create_topic():
     try:
