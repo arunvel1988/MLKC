@@ -661,18 +661,33 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'airflow installed successfully'})
             
             elif selected_tool == 'kafka':
-                # Install ArgoCD for CD
+    # Install Kafka using Strimzi Kafka Operator
+
                 if is_kafka_installed():
                     return jsonify({'success': True, 'message': 'Kafka is already installed'})
-                subprocess.run(['kubectl', 'create', 'namespace', 'kafka'], check=True)
-                subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka', '-n', 'kafka'], check=True)
-                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-persistent-single.yaml', '-n', 'kafka'], check=True)
-                subprocess.run(['kubectl', 'wait', 'kafka/my-cluster', '--for=condition=Ready', '--timeout=300s', '-n', 'kafka'], check=True)
+
+    # Add Strimzi Helm repository
+                subprocess.run(['kubectl', 'create', 'namespace', 'strimzi'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'strimzi', 'https://strimzi.io/charts'], check=True)
+
+    # Install Strimzi Kafka Operator
+                subprocess.run([
+                    'helm', 'install', 'strimzi-kafka-operator', 'strimzi/strimzi-kafka-operator',
+                    '--version', '0.38.0',
+                    '-n', 'strimzi',
                 
+                    '-f', './tools/kafka/strimzi-values.yaml'
+                ], check=True)
 
+    # Apply Kafka Cluster YAML
+                subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/kafka-cluster.yaml'], check=True)
 
-                return jsonify({'success': True, 'message': 'Kafka installed successfully. Topic created my-topic. Cluster created my-cluster '})
+    # Wait for the Kafka Cluster to be ready
+                subprocess.run(['kubectl', 'wait', '--for=condition=Ready', '--timeout=300s', '-n', 'strimzi', 'kafka/my-cluster'], check=True)
 
+    # You can add additional steps if needed, such as creating a service, configuring networking, etc.
+
+                return jsonify({'success': True, 'message': 'Kafka installed successfully'})
 
             elif selected_tool == 'monitoring':
                 if is_monitoring_installed():
@@ -839,8 +854,8 @@ def devops_tools(cluster_name):
             elif selected_tool == 'kafka':
                 # Delete ArgoCD for CD
                 if not is_kafka_installed():
-                    return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
+                    return jsonify({'success': True, 'message': 'Kafka is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'strimzi'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
             
             elif selected_tool == 'vault':
@@ -1672,20 +1687,28 @@ def describe(cluster_name):
 def kafka_cluster_details():
     try:
         # Run the kubectl command to get details of the Kafka cluster
-        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'kafka'], capture_output=True, check=True, text=True)
+        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'strimzi'], capture_output=True, check=True, text=True)
         kafka_output = result.stdout
+        print(kafka_output)
 
         # Split the output into lines and extract the relevant details
         lines = kafka_output.strip().split('\n')
         headers = lines[0].split()
         data = lines[1].split()
 
+        # Find the indices of the desired fields
+        name_index = headers.index('NAME')
+        desired_kafka_replicas_index = headers.index('DESIRED KAFKA REPLICAS')
+        desired_zk_replicas_index = headers.index('DESIRED ZK REPLICAS')
+        ready_index = headers.index('READY')
+        warnings_index = headers.index('WARNINGS')
+
         # Extract the desired details
-        kafka_cluster_name = data[0]
-        desired_kafka_replicas = int(data[1])
-        desired_zk_replicas = int(data[2])
-        ready = data[3]
-        metadata_state = data[4]
+        kafka_cluster_name = data[name_index]
+        desired_kafka_replicas = int(data[desired_kafka_replicas_index])
+        desired_zk_replicas = int(data[desired_zk_replicas_index])
+        ready = data[ready_index]
+        warnings = data[warnings_index]
 
         # Construct the response
         response = {
@@ -1694,16 +1717,14 @@ def kafka_cluster_details():
             'desired_kafka_replicas': desired_kafka_replicas,
             'desired_zk_replicas': desired_zk_replicas,
             'ready': ready,
-            'metadata_state': metadata_state
+            'warnings': warnings
         }
-        
+
         return render_template('kafka_cluster.html', data=response)
+
     except subprocess.CalledProcessError as e:
         error_message = f"Error retrieving Kafka cluster details: {str(e)}"
         return jsonify({'success': False, 'error': error_message})
-
-
-
 @app.route('/kafka/create_topic', methods=['POST'])
 def create_topic():
     try:
@@ -1717,12 +1738,15 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: {topic_name}
-  namespace: kafka
+  namespace: strimzi
+  labels:
+    strimzi.io/cluster: my-cluster
 spec:
   partitions: {partitions}
   replicas: {replicas}
   config:
     retention.ms: 7200000
+    segment.bytes: 1000000
 """
         # Apply the YAML content using kubectl
         result = subprocess.run(['kubectl', 'apply', '-f', '-'], input=yaml_template, capture_output=True, check=True, text=True)
