@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecomm-web-app-service
+spec:
+  selector:
+    app: ecomm-web-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9999 # Update with your container port
+  type: ClusterIP
+
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecomm-web-app
+  labels:
+    app: ecomm-web-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecomm-web-app
+  template:
+    metadata:
+      labels:
+        app: ecomm-web-app
+    spec:
+      containers:
+      - name: ecomm-web-app
+        image: arunvelpep1988/ecomm_web_app1
+        ports:
+        - containerPort: 9999 # Update with your container port

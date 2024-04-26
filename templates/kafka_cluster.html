@@ -9,6 +9,17 @@
             position: absolute;
             top: 10px;
             right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -36,9 +47,11 @@
 
     <button onclick="createTopic()">Create Topic</button>
     <button onclick="deleteTopic()">Delete Topic</button>
+    <button onclick="getTopics()">Get Topics</button>
+    <button onclick="deployApp()">Deploy Kafka Ecomm Application</button>
+    <button onclick="deleteApp()">Delete Kafka Ecomm Application</button>
 
     <a href="/" class="back-button">Back to Cluster</a>
-
 
     <script>
         function createTopic() {
@@ -79,6 +92,33 @@
                      "&replicas=" + encodeURIComponent(replicas));
         }
 
+        function getTopics() {
+            // Send a GET request to the server to fetch the list of topics
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/kafka/topics", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful
+                        var response = JSON.parse(xhr.responseText);
+                        var topics = response.topics;
+
+                        // Display the list of topics
+                        if (topics.length > 0) {
+                            alert("List of Kafka Topics:\n" + topics.join("\n"));
+                        } else {
+                            alert("No Kafka topics found.");
+                        }
+                    } else {
+                        // Request failed
+                        alert("Failed to fetch Kafka topics. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
         function deleteTopic() {
             // Retrieve the selected topic name from the dropdown menu
             var topicName = prompt("Enter the name of the topic to delete:");
@@ -97,7 +137,13 @@
                 if (xhr.readyState === XMLHttpRequest.DONE) {
                     if (xhr.status === 200) {
                         // Request was successful
-                        alert("Topic deleted successfully!");
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            alert("Topic deleted successfully!");
+                        } else {
+                            // Request was successful but deletion failed
+                            alert("Failed to delete topic. Error: " + response.error);
+                        }
                     } else {
                         // Request failed
                         alert("Failed to delete topic. Error: " + xhr.responseText);
@@ -107,7 +153,44 @@
             xhr.send("topic_name=" + encodeURIComponent(topicName));
         }
 
-        
+        function deployApp() {
+            // Send a POST request to the server to deploy Kafka Ecomm Application
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/deploy_app", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful, display the HTML content in a new window
+                        var newWindow = window.open("", "_blank");
+                        newWindow.document.write(xhr.responseText);
+                    } else {
+                        // Request failed
+                        alert("Failed to deploy Kafka Ecomm Application. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function deleteApp() {
+            // Send a POST request to the server to delete Kafka Ecomm Application
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/delete_app", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful
+                        alert("Kafka Ecomm Application deleted successfully!");
+                    } else {
+                        // Request failed
+                        alert("Failed to delete Kafka Ecomm Application. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send();
+        }
     </script>
 </body>
 </html>

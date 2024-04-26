@@ -9,6 +9,7 @@ import base64
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 import requests
+import time
 
 
 
@@ -1750,45 +1751,127 @@ spec:
 
 
 
-@app.route('/kafka/delete_topic', methods=['GET', 'POST'])
-def delete_topic():
-    if request.method == 'POST':
-        try:
-            # Get the selected topic name from the form
-            topic_name = request.form['topic_name']
 
+
+
+
+@app.route('/kafka/delete_topic', methods=['POST'])
+def delete_topic():
+    try:
+        # Get the selected topic name from the form
+        topic_name = request.form['topic_name']
+
+        # Check if the topic exists before attempting to delete it
+        check_result = subprocess.run(['kubectl', 'get', 'kafkatopic', topic_name, '-n', 'strimzi'], capture_output=True, text=True)
+        
+        # Check if the command was successful and if the topic exists
+        if check_result.returncode == 0 and check_result.stdout.strip():
             # Run the command to delete the Kafka topic
-            result = subprocess.run(['kubectl', 'delete', 'kafkatopic', topic_name, '-n', 'kafka'], capture_output=True, check=True, text=True)
+            delete_result = subprocess.run(['kubectl', 'delete', 'kafkatopic', topic_name, '-n', 'strimzi'], capture_output=True, text=True)
 
             # Check if the command was successful
-            if result.returncode == 0:
+            if delete_result.returncode == 0:
                 return jsonify({'success': True, 'message': f'Topic "{topic_name}" deleted successfully.'})
             else:
-                return jsonify({'success': False, 'error': f'Failed to delete topic "{topic_name}". Error: {result.stderr}'})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
-    else:
-        try:
-            # Run the command to get the list of Kafka topics
-            result = subprocess.run(['kubectl', 'get', 'kafkatopic', '-n', 'kafka'], capture_output=True, check=True, text=True)
-
-            # Extract topic names from the command output
-            topics = [line.split()[0] for line in result.stdout.strip().split('\n')[1:]]
-
-            return render_template('delete_topic.html',cluster_name=cluster_name, topics=topics)
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
+                return jsonify({'success': False, 'error': f'Failed to delete topic "{topic_name}". Error: {delete_result.stderr}'})
+        else:
+            return jsonify({'success': False, 'error': f'Topic "{topic_name}" not found.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 
 
 
 
-import subprocess
-import socket
+
+
+
+@app.route('/kafka/topics', methods=['GET'])
+def list_topics():
+    try:
+        # Run the command to get the list of Kafka topics
+        result = subprocess.run(['kubectl', 'get', 'kafkatopic', '-n', 'strimzi'], capture_output=True, check=True, text=True)
+
+        # Extract topic names from the command output
+        topics = [line.split()[0] for line in result.stdout.strip().split('\n')[1:]]
+
+        return jsonify({'success': True, 'topics': topics})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 
 def is_port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
+
+
+
+
+
+
+from flask import render_template
+
+@app.route('/kafka/deploy_app', methods=['POST'])
+def deploy_kafka_app():
+    try:
+        # Check if Kafka is already deployed
+        if is_kafka_deployed():
+            return jsonify({'success': False, 'error': 'Kafka is already deployed.'})
+
+        # Create the kafka-app namespace if it doesn't exist
+        create_namespace_if_not_exists('kafka-app')
+
+        # Deploy Kafka application
+        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy_app.yaml', '-n', 'kafka-app'], check=True)
+
+        # Wait for Kafka pods to come up
+        time.sleep(15)  # Adjust this delay as needed
+
+        # Generate a random port number between 9000 and 9999
+        kafka_port = random.randint(9000, 9999)
+
+        # Perform port forwarding with the random port
+        subprocess.Popen(['kubectl', 'port-forward', 'svc/ecomm-web-app-service', f'{kafka_port}:80', '-n', 'kafka-app'])
+
+        # Construct Kafka URL
+        kafka_url = f'http://localhost:{kafka_port}'
+
+        return render_template('kafka_deployed.html', kafka_url=kafka_url)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+
+
+@app.route('/kafka/delete_app', methods=['POST'])
+def delete_kafka_app():
+    try:
+        # Delete the kafka-app namespace
+        subprocess.run(['kubectl', 'delete', 'namespace', 'kafka-app'], check=True)
+        return jsonify({'success': True, 'message': 'Kafka Ecomm Application namespace deleted successfully.'})
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+def is_kafka_deployed():
+    # Check if Kafka pods are running in kafka-app namespace
+    result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kafka-app'], capture_output=True, text=True)
+    return 'kafka-' in result.stdout and 'Running' in result.stdout
+
+def create_namespace_if_not_exists(namespace):
+    # Check if namespace exists, if not create it
+    result = subprocess.run(['kubectl', 'get', 'namespace', namespace], capture_output=True, text=True)
+    if 'NotFound' in result.stderr:
+        subprocess.run(['kubectl', 'create', 'namespace', namespace], check=True)
+
+
+
+
+
+
+
+
 
 
 
