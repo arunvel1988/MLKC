@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Tekton CI Pipeline</h1>
+    <form method="post" action="{{ url_for('tekton_build') }}">
+        <div class="radio-group">
+            <div class="radio-option">
+                <input type="radio" name="build_type" value="simple" id="simple-build" required>
+                <label for="simple-build">Simple Build</label>
+            </div>
+            <div class="radio-option">
+                <input type="radio" name="build_type" value="complex" id="complex-build" required>
+                <label for="complex-build">Complex Build</label>
+            </div>
+        </div>
+        <div class="button-group">
+            <button type="submit" class="btn">Next</button>
+            <a class="back-button" href="/tekton">Back</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .radio-group {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .radio-option {
+        margin: 0 10px;
+    }
+
+    .button-group {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+        margin-right: 10px;
+    }
+
+    .btn:hover {
+        background-color: #3e8e41;
+    }
+
+    .back-button {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #f44336;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #d32f2f;
+    }
+</style>
+{% endblock %}
