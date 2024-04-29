@@ -10,6 +10,7 @@ from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 import requests
 import time
+import socket
 
 
 
@@ -2024,55 +2025,154 @@ def tekton_build():
 
 
 
+app.secret_key = 'test'  # Set a secret key for session management
 
 @app.route('/generate_template', methods=['GET', 'POST'])
 def generate_template():
-    if request.method == 'GET':
-        return render_template('create_pipeline_popup.html')
-    elif request.method == 'POST':
+    if request.method == 'POST':
         git_url = request.form.get('git_url')
-        docker_registry = request.form.get('docker_registry')       
+        docker_registry = request.form.get('docker_registry')
         git_username = request.form.get('git_username')
         git_token = request.form.get('git_token')
         docker_username = request.form.get('docker_username')
         docker_token = request.form.get('docker_token')
+        image_url = request.form.get('image_url')
 
         # Check for missing form fields
-        missing_fields = [field for field in [git_url, docker_registry, git_username, git_token, docker_username, docker_token] if not field]
+        missing_fields = [field for field in [git_url, docker_registry, git_username, git_token, docker_username, docker_token,image_url] if not field]
         if missing_fields:
             return f"Error: Missing form fields - {', '.join(missing_fields)}"
 
         # Store the form data in session or database for later use
         return redirect(url_for('create_pipeline_simple'))
 
-@app.route('/create_pipeline_simple', methods=['GET', 'POST'])
+    return render_template('create_pipeline_popup.html')
+
+
+def check_secret_exists(secret_name):
+    # Run kubectl get secret command to check if the secret exists
+    result = subprocess.run(['kubectl', 'get', 'secret', secret_name], capture_output=True, text=True)
+    
+    # Check if the secret exists based on the output of the command
+    if result.returncode == 0:
+        return True  # Secret exists
+    else:
+        return False  # Secret does not exist
+def check_secret_exists(secret_name):
+    # Run kubectl get secret command to check if the secret exists
+    result = subprocess.run(['kubectl', 'get', 'secret', secret_name], capture_output=True, text=True)
+    
+    # Check if the secret exists based on the output of the command
+    if result.returncode == 0:
+        return True  # Secret exists
+    else:
+        return False  # Secret does not exist
+
+def create_docker_secret(username, password):
+    # Step 1: Generate base64-encoded string
+    auth_string = f'{username}:{password}'
+    base64_auth = subprocess.run(['echo', '-n', auth_string], stdout=subprocess.PIPE)
+    base64_auth_string = base64_auth.stdout.decode('utf-8').strip()
+    
+    # Step 2: Create Docker configuration file
+    docker_config_content = f'''
+    {{
+      "auths": {{
+        "https://index.docker.io/v1/": {{
+          "auth": "{base64_auth_string}"
+        }}
+      }}
+    }}
+    '''
+    with open('config.json', 'w') as f:
+        f.write(docker_config_content)
+    
+    # Step 3: Create secret in Kubernetes
+    create_secret_cmd = [
+        'kubectl', 'create', 'secret', 'generic', 'docker-credentials',
+        '--from-file=.dockerconfigjson=config.json', '--type=kubernetes.io/dockerconfigjson'
+    ]
+    subprocess.run(create_secret_cmd)
+
+
+
+
+
+@app.route('/create_pipeline_simple', methods=['POST'])
 def create_pipeline_simple():
-    if request.method == 'GET':
-        return "Invalid request method. Please submit the form."
-    elif request.method == 'POST':
-        git_url = request.form.get('git_url')
-        docker_registry = request.form.get('docker_registry')
-        #image_name = request.form.get('image_name')
-        git_username = request.form.get('git_username')
-        git_token = request.form.get('git_token')
-        docker_username = request.form.get('docker_username')
-        docker_token = request.form.get('docker_token')
+    git_username = request.form.get('git_username')
+    git_token = request.form.get('git_token')
+    docker_username = request.form.get('docker_username')
+    docker_token = request.form.get('docker_token')
+    git_url = request.form.get('git_url')
+    image_url = request.form.get('image_url')
 
-        # Check if any form fields are missing
-        if None in [git_url, docker_registry, git_username, git_token, docker_username, docker_token]:
-            return "Error: Missing form fields"
 
-        # Apply Git and Docker configurations using subprocess and kubectl apply
+    # Check if any form fields are missing
+    if None in [git_username, git_token, docker_username, docker_token]:
+        return "Error: Missing form fields"
+
+    # Check if git credentials secret exists
+    if not check_secret_exists('git-credentials'):
+        # Create git credentials secret
         subprocess.run(['kubectl', 'create', 'secret', 'generic', 'git-credentials', '--from-literal=username='+git_username, '--from-literal=password='+git_token])
-        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'docker-credentials', '--from-literal=username='+docker_username, '--from-literal=password='+docker_token])
+    else:
+        print("Git credentials secret already exists. Skipping creation.")
 
-        # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
-        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
-        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
-        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
-        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-run-simple.yaml'])
+    # Check if docker credentials secret exists
+    if not check_secret_exists('docker-credentials'):
+        # Create docker credentials secret using the provided username and token
+        create_docker_secret(docker_username, docker_token)
+    else:
+        print("Docker credentials secret already exists. Skipping creation.")
 
-        return "Kubernetes configurations applied successfully!"
+    
+
+
+    # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
+
+    
+    yaml_template = f"""
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: clone-build-push-run-
+spec:
+  pipelineRef:
+    name: clone-build-push
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: docker-credentials
+      secret:
+        secretName: docker-credentials
+  params:
+    - name: repo-url
+      value: {git_url}
+    - name: image-reference
+      value: {image_url}
+"""
+
+    # Apply the YAML content using kubectl
+    result = subprocess.run(['kubectl', 'create', '-f', '-'], input=yaml_template, capture_output=True, check=True, text=True)
+    
+    
+
+    return "Kubernetes configurations applied successfully!"
+
+
 
 
 #######################################################
