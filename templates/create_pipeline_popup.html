@@ -25,34 +25,72 @@
             border: 1px solid #888;
             width: 80%;
         }
+        /* Styles for the buttons */
+        .button {
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            width: 100px; /* Adjust button width as needed */
+            margin-right: 10px;
+        }
+        /* Green button */
+        .submit-button {
+            background-color: #4CAF50; /* Green */
+        }
+        /* Red button */
+        .back-button {
+            background-color: #f44336; /* Red */
+        }
+        /* Hover effect */
+        .button:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
     <div class="popup">
         <div class="popup-content">
             <h2>Enter Pipeline Details</h2>
-            <form method="post" action="/create_pipeline_simple">
+            <form method="post" action="{{ url_for('create_pipeline_simple') }}">
                 <label for="git_url">Git URL:</label><br>
-                <input type="text" id="git_url" name="git_url"><br><br>
+                <input type="text" id="git_url" name="git_url" required><br><br>
+
+                <label for="docker_registry">Docker Registry:</label><br>
+                <input type="text" id="docker_registry" name="docker_registry" required><br><br>
 
                 <label for="git_username">Git Username:</label><br>
-                <input type="text" id="git_username" name="git_username"><br><br>
+                <input type="text" id="git_username" name="git_username" required><br><br>
 
                 <label for="git_token">Git Token:</label><br>
-                <input type="password" id="git_token" name="git_token"><br><br>
-
-                <label for="docker_url">Docker Registry URL:</label><br>
-                <input type="text" id="docker_url" name="docker_url"><br><br>
+                <input type="password" id="git_token" name="git_token" required><br><br>
 
                 <label for="docker_username">Docker Username:</label><br>
-                <input type="text" id="docker_username" name="docker_username"><br><br>
+                <input type="text" id="docker_username" name="docker_username" required><br><br>
 
                 <label for="docker_token">Docker Token:</label><br>
-                <input type="password" id="docker_token" name="docker_token"><br><br>
+                <input type="password" id="docker_token" name="docker_token" required><br><br>
+                <label for="image_url">Docker Image :</label><br>
+                <input type="text" id="image_url" name="image_url" required><br><br>
+                
 
-                <button type="submit">Submit</button>
+                <button type="submit" class="button submit-button">Submit</button>
+                <button type="button" class="button back-button" onclick="goBack()">Back</button> <!-- Added back button -->
             </form>
         </div>
     </div>
+
+    <script>
+        // JavaScript function to go back to the previous page when clicking the back button
+        function goBack() {
+            window.history.back();
+        }
+    </script>
 </body>
 </html>
