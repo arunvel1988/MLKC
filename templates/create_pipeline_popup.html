@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Pipeline Popup</title>
+    <style>
+        /* Styles for the popup form */
+        .popup {
+            display: block;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .popup-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup">
+        <div class="popup-content">
+            <h2>Enter Pipeline Details</h2>
+            <form method="post" action="/create_pipeline_simple">
+                <label for="git_url">Git URL:</label><br>
+                <input type="text" id="git_url" name="git_url"><br><br>
+
+                <label for="git_username">Git Username:</label><br>
+                <input type="text" id="git_username" name="git_username"><br><br>
+
+                <label for="git_token">Git Token:</label><br>
+                <input type="password" id="git_token" name="git_token"><br><br>
+
+                <label for="docker_url">Docker Registry URL:</label><br>
+                <input type="text" id="docker_url" name="docker_url"><br><br>
+
+                <label for="docker_username">Docker Username:</label><br>
+                <input type="text" id="docker_username" name="docker_username"><br><br>
+
+                <label for="docker_token">Docker Token:</label><br>
+                <input type="password" id="docker_token" name="docker_token"><br><br>
+
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
