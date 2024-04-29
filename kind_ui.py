@@ -2004,6 +2004,77 @@ def tekton_dashboard():
 
 
 
+
+# Tekton Build route
+@app.route('/tekton/build', methods=['GET', 'POST'])
+def tekton_build():
+    if request.method == 'POST':
+        build_type = request.form.get('build_type')
+        if build_type == 'simple':
+            # Handle simple build pipeline
+            return render_template('simple_build.html')
+        elif build_type == 'complex':
+            # Handle complex build pipeline
+            return render_template('complex_build.html')
+
+    return render_template('build_type.html')
+
+
+
+
+
+
+
+@app.route('/generate_template', methods=['GET', 'POST'])
+def generate_template():
+    if request.method == 'GET':
+        return render_template('create_pipeline_popup.html')
+    elif request.method == 'POST':
+        git_url = request.form.get('git_url')
+        docker_registry = request.form.get('docker_registry')       
+        git_username = request.form.get('git_username')
+        git_token = request.form.get('git_token')
+        docker_username = request.form.get('docker_username')
+        docker_token = request.form.get('docker_token')
+
+        # Check for missing form fields
+        missing_fields = [field for field in [git_url, docker_registry, git_username, git_token, docker_username, docker_token] if not field]
+        if missing_fields:
+            return f"Error: Missing form fields - {', '.join(missing_fields)}"
+
+        # Store the form data in session or database for later use
+        return redirect(url_for('create_pipeline_simple'))
+
+@app.route('/create_pipeline_simple', methods=['GET', 'POST'])
+def create_pipeline_simple():
+    if request.method == 'GET':
+        return "Invalid request method. Please submit the form."
+    elif request.method == 'POST':
+        git_url = request.form.get('git_url')
+        docker_registry = request.form.get('docker_registry')
+        #image_name = request.form.get('image_name')
+        git_username = request.form.get('git_username')
+        git_token = request.form.get('git_token')
+        docker_username = request.form.get('docker_username')
+        docker_token = request.form.get('docker_token')
+
+        # Check if any form fields are missing
+        if None in [git_url, docker_registry, git_username, git_token, docker_username, docker_token]:
+            return "Error: Missing form fields"
+
+        # Apply Git and Docker configurations using subprocess and kubectl apply
+        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'git-credentials', '--from-literal=username='+git_username, '--from-literal=password='+git_token])
+        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'docker-credentials', '--from-literal=username='+docker_username, '--from-literal=password='+docker_token])
+
+        # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
+        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
+        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
+        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
+        subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-run-simple.yaml'])
+
+        return "Kubernetes configurations applied successfully!"
+
+
 #######################################################
 # /argo
 #########################################################
