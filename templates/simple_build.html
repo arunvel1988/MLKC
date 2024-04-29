@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Simple Build Pipeline</h1>
+    <form method="get" action="{{ url_for('generate_template') }}">
+        <div>
+            <label>
+                <input type="checkbox" name="tasks" value="git-clone" {% if 'git-clone' in tasks %}checked{% endif %}>
+                Git Clone
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" name="tasks" value="build-and-push" {% if 'build-and-push' in tasks %}checked{% endif %}>
+                Build and Push
+            </label>
+        </div>
+        <button type="submit">Generate Template</button>
+    </form>
+    <a class="back-button" href="/tekton/build">Back</a>
+</div>
+{% endblock %}
