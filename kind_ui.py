@@ -2068,13 +2068,16 @@ def check_secret_exists(secret_name):
     else:
         return False  # Secret does not exist
 
+
+
 def create_docker_secret(username, password):
-    # Step 1: Generate base64-encoded string
+    # Step 1: Concatenate username and password with a colon separator
     auth_string = f'{username}:{password}'
-    base64_auth = subprocess.run(['echo', '-n', auth_string], stdout=subprocess.PIPE)
-    base64_auth_string = base64_auth.stdout.decode('utf-8').strip()
     
-    # Step 2: Create Docker configuration file
+    # Step 2: Base64 encode the auth_string
+    base64_auth_string = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
+    
+    # Step 3: Create Docker configuration content
     docker_config_content = f'''
     {{
       "auths": {{
@@ -2084,15 +2087,20 @@ def create_docker_secret(username, password):
       }}
     }}
     '''
+    
+    # Step 4: Write the Docker configuration content to config.json
     with open('config.json', 'w') as f:
         f.write(docker_config_content)
     
-    # Step 3: Create secret in Kubernetes
+    # Step 5: Create the Kubernetes secret
     create_secret_cmd = [
         'kubectl', 'create', 'secret', 'generic', 'docker-credentials',
         '--from-file=.dockerconfigjson=config.json', '--type=kubernetes.io/dockerconfigjson'
     ]
     subprocess.run(create_secret_cmd)
+
+
+
 
 
 
@@ -2132,6 +2140,7 @@ def create_pipeline_simple():
     # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
+   
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
 
     
@@ -2144,6 +2153,8 @@ spec:
   pipelineRef:
     name: clone-build-push
   podTemplate:
+    
+  
     securityContext:
       fsGroup: 65532
   workspaces:
@@ -2170,7 +2181,7 @@ spec:
     
     
 
-    return "Kubernetes configurations applied successfully!"
+    return render_template('pipeline.html', message="Kubernetes configurations applied successfully!")
 
 
 
