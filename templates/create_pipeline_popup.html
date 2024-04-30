@@ -20,10 +20,15 @@
         }
         .popup-content {
             background-color: #fefefe;
-            margin: 15% auto;
+            margin: auto;
             padding: 20px;
             border: 1px solid #888;
             width: 80%;
+            max-width: 600px; /* Adjust max-width as needed */
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
         }
         /* Styles for the buttons */
         .button {
@@ -59,23 +64,23 @@
         <div class="popup-content">
             <h2>Enter Pipeline Details</h2>
             <form method="post" action="{{ url_for('create_pipeline_simple') }}">
-                <label for="git_url">Git URL:</label><br>
+                <label for="git_url">Git URL: Repository</label><br>
                 <input type="text" id="git_url" name="git_url" required><br><br>
 
                 <label for="docker_registry">Docker Registry:</label><br>
-                <input type="text" id="docker_registry" name="docker_registry" required><br><br>
+                <input type="text" id="docker_registry" name="docker_registry"><br><br>
 
                 <label for="git_username">Git Username:</label><br>
-                <input type="text" id="git_username" name="git_username" required><br><br>
+                <input type="text" id="git_username" name="git_username"><br><br>
 
                 <label for="git_token">Git Token:</label><br>
-                <input type="password" id="git_token" name="git_token" required><br><br>
+                <input type="password" id="git_token" name="git_token"><br><br>
 
                 <label for="docker_username">Docker Username:</label><br>
-                <input type="text" id="docker_username" name="docker_username" required><br><br>
+                <input type="text" id="docker_username" name="docker_username"><br><br>
 
                 <label for="docker_token">Docker Token:</label><br>
-                <input type="password" id="docker_token" name="docker_token" required><br><br>
+                <input type="password" id="docker_token" name="docker_token"><br><br>
                 <label for="image_url">Docker Image :</label><br>
                 <input type="text" id="image_url" name="image_url" required><br><br>
                 

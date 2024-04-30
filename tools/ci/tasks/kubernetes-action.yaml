@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-with-image-update
+spec:
+  params:
+    - name: image-reference
+      description: The reference of the Docker image
+      type: string
+    - name: namespace
+      description: The Kubernetes namespace for deployment
+      type: string
+
+  workspaces:
+    - name: source
+      description: Holds the context and Dockerfile
+  steps:
+    - name: update-image-in-app-yaml
+      image: alpine/git
+      script: |
+        cd /workspace/source
+        ls -ltr
+        sed -i "s|image:.*|image: $(params.image-reference)|" app.yaml
+    - name: apply-deployment
+      image: bitnami/kubectl
+      script: |
+        echo "Applying deployment"
+        kubectl apply -f /workspace/source/app.yaml -n $(params.namespace)
+

@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "deployments"] # Add more resources as needed
+  verbs: ["get", "list", "create", "update", "delete"] # Adjust verbs based on required permissions

@@ -1,20 +1,18 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: kaniko
+  name: kaniko-with-trivy
   labels:
     app.kubernetes.io/version: "0.6"
   annotations:
     tekton.dev/pipelines.minVersion: "0.17.0"
     tekton.dev/categories: Image Build
     tekton.dev/tags: image-build
-    tekton.dev/displayName: "Build and upload container image using Kaniko"
+    tekton.dev/displayName: "Build and upload container image using Kaniko with Trivy scan"
     tekton.dev/platforms: "linux/amd64,linux/arm64,linux/ppc64le"
 spec:
   description: >-
-    This Task builds a simple Dockerfile with kaniko and pushes to a registry.
-    This Task stores the image name and digest as results, allowing Tekton Chains to pick up
-    that an image was built & sign it.
+    This Task builds a simple Dockerfile with kaniko and pushes to a registry. It then scans the built image with Trivy and halts the pipeline if critical or high vulnerabilities are found.
   params:
     - name: IMAGE
       description: Name (reference) of the image to build.
@@ -52,11 +50,9 @@ spec:
         - --context=$(workspaces.source.path)/$(params.CONTEXT) # The user does not need to care the workspace and the source.
         - --destination=$(params.IMAGE)
         - --digest-file=$(results.IMAGE_DIGEST.path)
-      # kaniko assumes it is running as root, which means this example fails on platforms
-      # that default to run containers as random uid (like OpenShift). Adding this securityContext
-      # makes it explicit that it needs to run as root.
       securityContext:
         runAsUser: 0
+
     - name: write-url
       image: docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9
       script: |
@@ -67,13 +63,44 @@ spec:
     - name: write-digest
       workingDir: $(workspaces.source.path)
       image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter:v0.11.1
-    # output of imagedigestexport [{"key":"digest","value":"sha256:eed29..660","resourceRef":{"name":"myrepo/myimage"}}]
       command: ["/ko-app/imagedigestexporter"]
       args:
-      - -images=[{"name":"$(params.IMAGE)","type":"image","url":"$(params.IMAGE)","digest":"","OutputImageDir":"$(workspaces.source.path)/image-digest"}]
-      - -terminationMessagePath=image-digested
+        - -images=[{"name":"$(params.IMAGE)","type":"image","url":"$(params.IMAGE)","digest":"","OutputImageDir":"$(workspaces.source.path)/image-digest"}]
+        - -terminationMessagePath=image-digested
+
     - name: digest-to-results
       workingDir: $(workspaces.source.path)
       image: stedolan/jq
       script: |
         cat image-digested | jq -j '.[0].value' | tee /tekton/results/IMAGE-DIGEST
+
+    - name: scan-image
+      image: aquasec/trivy:latest
+      args:
+        - "image"
+        - "--severity"
+        - "HIGH,CRITICAL"
+        - "--format"
+        - "json"
+        - "--no-progress"
+        - "$(params.IMAGE)"
+      securityContext:
+        runAsUser: 0
+      script: |
+        echo "Scanning image for vulnerabilities..."
+        trivy_output=$(trivy image --severity HIGH,CRITICAL --format json --no-progress "$(params.IMAGE)")
+        
+        # Parse the JSON output to get the count of critical and high vulnerabilities
+        critical_count=$(echo "$trivy_output" | jq '.[].Vulnerabilities[] | select(.Severity == "CRITICAL")' | wc -l)
+        high_count=$(echo "$trivy_output" | jq '.[].Vulnerabilities[] | select(.Severity == "HIGH")' | wc -l)
+        
+        echo "Critical vulnerabilities found: $critical_count"
+        echo "High vulnerabilities found: $high_count"
+        
+        # Check if the count of critical and high vulnerabilities is more than 5
+        if [ "$((critical_count + high_count))" -gt 5 ]; then
+          echo "Found more than 5 critical and high vulnerabilities. Halting pipeline."
+          exit 1
+        else
+          echo "Image passed vulnerability scan. Proceeding with pipeline."
+        fi
