@@ -1,38 +1,76 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: clone-build-push
+  name: ci-cd-pipeline
 spec:
   description: |
-    This pipeline clones a git repo, builds a Docker image with Kaniko and
-    pushes it to a registry    
+    This pipeline clones a Git repo, builds a Docker image with Kaniko, scans it
+    for vulnerabilities with Trivy, and pushes it to a registry. It then updates
+    the YAML file in a CD repo and commits the changes.
   params:
-  - name: repo-url
-    type: string
-  - name: image-reference
-    type: string
+    - name: ci-repo-url
+      type: string
+    - name: cd-repo-url
+      type: string
+    - name: image-reference
+      type: string
   workspaces:
-  - name: shared-data
-  - name: docker-credentials
+    - name: shared-data
+    - name: docker-credentials
+    - name: ci-repo
+    - name: docker_app_cd
   tasks:
-  - name: fetch-source
-    taskRef:
-      name: git-clone
-    workspaces:
-    - name: output
-      workspace: shared-data
-    params:
-    - name: url
-      value: $(params.repo-url)
-  - name: build-push
-    runAfter: ["fetch-source"]
-    taskRef:
-      name: kaniko
-    workspaces:
-    - name: source
-      workspace: shared-data
-    - name: dockerconfig
-      workspace: docker-credentials
-    params:
-    - name: IMAGE
-      value: $(params.image-reference)
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: ci-repo
+      params:
+        - name: url
+          value: $(params.ci-repo-url)
+    - name: build-push
+      runAfter: ["fetch-source"]
+      taskRef:
+        name: kaniko
+      workspaces:
+        - name: source
+          workspace: ci-repo
+        - name: dockerconfig
+          workspace: docker-credentials
+
+
+      params:
+        - name: IMAGE
+          value: $(params.image-reference)
+    - name: scan-for-vulnerabilities
+      runAfter: ["build-push"]
+      taskRef:
+        name: trivy-scanner
+      workspaces:
+        - name: manifest-dir
+          workspace: ci-repo
+      params:
+        - name: ARGS
+          value:
+            - "image"
+        - name: IMAGE_PATH
+          value: $(params.image-reference)
+
+    - name: update-yaml
+      runAfter: ["scan-for-vulnerabilities"]
+      taskRef:
+        name: update-image
+      workspaces:
+
+        - name: docker_app_cd
+          workspace: docker_app_cd
+      params:
+        - name: URL
+          value: $(params.cd-repo-url)
+        - name: source-directory
+          value: $(params.image-reference)
+        - name: cd-repo-directory
+          value: "/"  # Since app.yaml is in the root path of the CD repository
+        - name: IMAGE_URL
+          value: $(params.image-reference)

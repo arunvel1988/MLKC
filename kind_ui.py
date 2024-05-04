@@ -2140,6 +2140,108 @@ def create_pipeline_simple():
     # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/trivy.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/update-image.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-commit-push.yaml'])
+
+
+   
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
+
+    
+    yaml_template = f"""
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: ci-cd-pipeline-run-
+spec:
+  pipelineRef:
+    name: ci-cd-pipeline
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+
+    - name: docker-credentials
+      secret:
+        secretName: docker-credentials
+    
+    - name: ci-repo
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+    - name: docker_app_cd
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+  params:
+    - name: ci-repo-url
+      value: https://github.com/arunvel1988/docker_app_ci
+    - name: cd-repo-url
+      value: https://github.com/arunvel1988/docker_app_cd
+    - name: image-reference
+      value: {image_url}
+    - name: IMAGE_URL
+      value: arunvel1988/tekton-ci-argo-cd
+
+
+"""
+
+    # Apply the YAML content using kubectl
+    result = subprocess.run(['kubectl', 'create', '-f', '-'], input=yaml_template, capture_output=True, check=True, text=True)
+    
+    
+
+    return render_template('pipeline.html', message="Kubernetes configurations applied successfully!")
+
+
+@app.route('/create_pipeline_complex', methods=['POST'])
+def create_pipeline_complex():
+    git_username = request.form.get('git_username')
+    git_token = request.form.get('git_token')
+    docker_username = request.form.get('docker_username')
+    docker_token = request.form.get('docker_token')
+    git_url = request.form.get('git_url')
+    image_url = request.form.get('image_url')
+
+
+    # Check if any form fields are missing
+    if None in [git_username, git_token, docker_username, docker_token]:
+        return "Error: Missing form fields"
+
+    # Check if git credentials secret exists
+    if not check_secret_exists('git-credentials'):
+        # Create git credentials secret
+        subprocess.run(['kubectl', 'create', 'secret', 'generic', 'git-credentials', '--from-literal=username='+git_username, '--from-literal=password='+git_token])
+    else:
+        print("Git credentials secret already exists. Skipping creation.")
+
+    # Check if docker credentials secret exists
+    if not check_secret_exists('docker-credentials'):
+        # Create docker credentials secret using the provided username and token
+        create_docker_secret(docker_username, docker_token)
+    else:
+        print("Docker credentials secret already exists. Skipping creation.")
+
+    
+
+
+    # Apply the Pipeline and PipelineRun YAML configurations using kubectl apply
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/git-clone.yaml'])
+    subprocess.run(['kubectl', 'apply', '-f', './tools/ci/tasks/build-push.yaml'])
    
     subprocess.run(['kubectl', 'apply', '-f', './tools/ci/pipeline/pipeline-simple.yaml'])
 
@@ -2185,7 +2287,6 @@ spec:
 
 
 
-
 #######################################################
 # /argo
 #########################################################
@@ -2219,10 +2320,75 @@ def argocd_dashboard():
             dashboard_url_argocd = f'http://localhost:{argocd_port}'
         else:
             dashboard_url_argocd = f'http://public-ip:{argocd_port}'
+
+        
         
         return render_template('argocd_dashboard.html', dashboard_url_argocd=dashboard_url_argocd)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error port-forwarding ArgoCD dashboard service: {str(e)}'}), 500
+    
+
+
+
+
+
+
+@app.route('/create_argocd_app', methods=['GET', 'POST'])
+def create_argocd_app():
+    if request.method == 'POST':
+        # Check if argocd CLI is already installed
+        try:
+            subprocess.check_call(['argocd', 'version'])
+        except subprocess.CalledProcessError:
+            # Install argocd CLI if not already installed
+            subprocess.check_call([
+                'curl', '-sSL', '-o', 'argocd-linux-amd64',
+                'https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64'
+            ])
+            subprocess.check_call(['sudo', 'install', '-m', '555', 'argocd-linux-amd64', '/usr/local/bin/argocd'])
+            subprocess.check_call(['rm', 'argocd-linux-amd64'])
+
+        # Get username, password, and other form data
+        username = request.form['username']
+        password = request.form['password']
+        argocd_server = request.form['argocd_server']
+        app_name = request.form['app_name']
+        namespace = request.form['namespace']
+        github_link = request.form['github_link']
+        path = request.form['path']
+
+        # Login to ArgoCD using argocd CLI
+        cmd_login = ['argocd', 'login', argocd_server, '--username', username, '--password', password]
+        process = subprocess.Popen(cmd_login, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate(input='y\n'.encode())  # Encode the string to bytes
+
+        # Check if the application name already exists
+        existing_apps = subprocess.check_output(['argocd', 'app', 'list', '-o', 'json']).decode('utf-8')
+        if app_name in existing_apps:
+            return "Error: Application name already exists."
+
+        # Create ArgoCD application
+        cmd_create_app = [
+            'argocd', 'app', 'create', app_name,
+            '--repo', github_link,
+            '--path', path,
+            '--dest-namespace', namespace,
+            '--dest-server', 'https://kubernetes.default.svc',
+            '--sync-policy', 'auto',
+            '--directory-recurse'
+        ]
+
+        try:
+            subprocess.check_call(cmd_create_app)
+            return "Argo CD application created successfully."
+        except subprocess.CalledProcessError as e:
+            error_message = e.output.decode() if e.output is not None else "No output from subprocess"
+            return f"Error creating Argo CD application: {error_message}"
+
+    return render_template('create_argocd_app.html', message="Argo CD application created successfully.")
+
+
+        
 
 
 #######################################################

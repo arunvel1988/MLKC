@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create ArgoCD App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        button {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #005F6B;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create ArgoCD App</h1>
+        {% if message %}
+            <p>{{ message }}</p>
+        {% endif %}
+        <form action="{{ url_for('create_argocd_app') }}" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="argocd_server">Argocd Server:</label>
+            <input type="text" id="argocd_server" name="argocd_server" required>
+
+            <label for="app_name">App Name:</label>
+            <input type="text" id="app_name" name="app_name" required>
+
+            <label for="github_link">GitHub Repository URL:</label>
+            <input type="text" id="github_link" name="github_link" required>
+
+            <label for="namespace">Namespace:</label>
+            <input type="text" id="namespace" name="namespace" required>
+
+            <label for="path">Path:</label>
+            <input type="text" id="path" name="path" required>
+
+            <input type="submit" value="Create App">
+        </form>
+        <a href="/argocd"><button>Back to ArgoCD</button></a>
+    </div>
+</body>
+</html>

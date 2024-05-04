@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demoarun  # Assuming the app name is the last part of the GitHub link
+  namespace: default
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/arunvel1988/docker_app_cd
+    targetRevision: HEAD
+    path: /
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true

@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: update-image
+spec:
+  description: Update the image reference in the app.yaml file with the latest built image and commit changes
+  params:
+    - name: IMAGE_URL
+      description: The reference to the latest built image
+      type: string
+    - name: URL
+      description: Repository URL to clone from.
+      type: string
+
+  workspaces:
+    - name: docker_app_cd
+  steps:
+    - name: update-image-reference
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2
+      env:
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+      script: |
+        
+        REPO_NAME=$(basename "$(params.URL)" | cut -d'.' -f1)
+        
+        git clone "$(params.URL)"
+        cd "$REPO_NAME"
+        # Updating the app.yaml file
+        sed -i "s|image:.*|image: $(params.IMAGE_URL)|g" app.yaml
+
+        # Configuring Git user details
+        git config --global user.email "aryan.arunachalam@gmail.com"
+        git config --global user.name "arunvel1988"
+        # Adding and committing changes
+        git add .
+        git commit -m "Update image reference in app.yaml"
+
+        # Constructing remote URL with username and password
+        REMOTE_URL=$(echo "$(params.URL)" | cut -c9-)
+        echo "REMOTE_URL: $REMOTE_URL"
+        export REMOTE_URL
+
+        GIT_PUSH_URL="https://${GIT_USERNAME}:${GIT_PASSWORD}@${REMOTE_URL}"
+        echo "GIT_PUSH_URL: $GIT_PUSH_URL"
+
+        git remote set-url origin "$GIT_PUSH_URL"
+
+        git push origin main
+
