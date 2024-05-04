@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Airflow Dashboard</title>
+    <title>ArgoCD Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,6 +22,7 @@
             padding: 30px;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative; /* Added */
         }
 
         .message {
@@ -32,14 +33,15 @@
         }
 
         .back-button {
-            display: inline-block;
+            position: absolute; /* Added */
+            top: 10px; /* Adjusted */
+            right: 10px; /* Added */
             padding: 10px 20px;
             background-color: #f44336;
             color: #fff;
             text-decoration: none;
             border-radius: 5px;
             transition: background-color 0.3s ease;
-            margin-top: 20px;
         }
 
         .back-button:hover {
@@ -112,39 +114,43 @@
 </head>
 <body>
     <div class="container">
-        <h1>Airflow Dashboard</h1>
-        <p class="message">Click the link below to access the Airflow dashboard:</p>
-        <p class="dashboard-link"><a href="{{ dashboard_url_airflow }}" target="_blank">{{ dashboard_url_airflow }}</a></p>
-        <a class="back-button" href="/airflow">Back</a>
+        <h1>ArgoCD Dashboard</h1>
+        <p class="message">Click the link below to access the ArgoCD dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_argocd }}" target="_blank">{{ dashboard_url_argocd }}</a></p>
+        <p class="message">To retrieve the ArgoCD admin password, run the following command:</p>
+        <code>kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d</code>
         
-        <div class="info">
-            <h2>About Airflow</h2>
-            <p>Apache Airflow is an open-source platform to programmatically author, schedule, and monitor workflows.</p>
-            <p>Learn more about Airflow on the <a href="https://airflow.apache.org/" target="_blank">official Airflow website</a>.</p>
-        </div>
-    </div>
+        <a class="back-button" href="/argocd">Back</a> <!-- Added -->
 
-    <!-- Modal -->
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+        <div class="info">
+            <h2>About ArgoCD</h2>
+            <p>ArgoCD is an open-source Continuous Delivery platform.</p>
+            <p>Learn more about ArgoCD on the <a href="https://argoproj.github.io/argo-cd/" target="_blank">official ArgoCD website</a>.</p>
             <p>For cloud deployments, please use the public IP address of your instance.</p>
         </div>
+
+        <!-- Modal -->
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <p>For cloud deployments, please use the public IP address of your instance.</p>
+            </div>
+        </div>
+
+        <script>
+            // Get the modal
+            var modal = document.getElementById("myModal");
+
+            // When the page loads, show the modal
+            window.onload = function() {
+                modal.style.display = "block";
+            }
+
+            // Close the modal
+            function closeModal() {
+                modal.style.display = "none";
+            }
+        </script>
     </div>
-
-    <script>
-        // Get the modal
-        var modal = document.getElementById("myModal");
-
-        // When the page loads, show the modal
-        window.onload = function() {
-            modal.style.display = "block";
-        }
-
-        // Close the modal
-        function closeModal() {
-            modal.style.display = "none";
-        }
-    </script>
 </body>
 </html>

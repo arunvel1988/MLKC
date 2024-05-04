@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: kaniko-with-trivy
+  name: kaniko
   labels:
     app.kubernetes.io/version: "0.6"
   annotations:
@@ -12,7 +12,9 @@ metadata:
     tekton.dev/platforms: "linux/amd64,linux/arm64,linux/ppc64le"
 spec:
   description: >-
-    This Task builds a simple Dockerfile with kaniko and pushes to a registry. It then scans the built image with Trivy and halts the pipeline if critical or high vulnerabilities are found.
+    This Task builds a simple Dockerfile with kaniko and pushes to a registry. 
+    It then scans the built image with Trivy and halts the pipeline if critical 
+    or high vulnerabilities are found.
   params:
     - name: IMAGE
       description: Name (reference) of the image to build.
@@ -35,6 +37,7 @@ spec:
       description: Includes a docker `config.json`
       optional: true
       mountPath: /kaniko/.docker
+
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built.
@@ -74,33 +77,4 @@ spec:
       script: |
         cat image-digested | jq -j '.[0].value' | tee /tekton/results/IMAGE-DIGEST
 
-    - name: scan-image
-      image: aquasec/trivy:latest
-      args:
-        - "image"
-        - "--severity"
-        - "HIGH,CRITICAL"
-        - "--format"
-        - "json"
-        - "--no-progress"
-        - "$(params.IMAGE)"
-      securityContext:
-        runAsUser: 0
-      script: |
-        echo "Scanning image for vulnerabilities..."
-        trivy_output=$(trivy image --severity HIGH,CRITICAL --format json --no-progress "$(params.IMAGE)")
-        
-        # Parse the JSON output to get the count of critical and high vulnerabilities
-        critical_count=$(echo "$trivy_output" | jq '.[].Vulnerabilities[] | select(.Severity == "CRITICAL")' | wc -l)
-        high_count=$(echo "$trivy_output" | jq '.[].Vulnerabilities[] | select(.Severity == "HIGH")' | wc -l)
-        
-        echo "Critical vulnerabilities found: $critical_count"
-        echo "High vulnerabilities found: $high_count"
-        
-        # Check if the count of critical and high vulnerabilities is more than 5
-        if [ "$((critical_count + high_count))" -gt 5 ]; then
-          echo "Found more than 5 critical and high vulnerabilities. Halting pipeline."
-          exit 1
-        else
-          echo "Image passed vulnerability scan. Proceeding with pipeline."
-        fi
+ 

@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-commit-push
+spec:
+  description: Commit and push changes to the Git repository
+  params:
+    - name: directory
+      description: The directory containing the changes to be committed
+      type: string
+    - name: url
+      description: The URL of the Git repository
+      type: string
+  workspaces:
+    - name: cd-repo
+  steps:
+    - name: git-config
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2
+      script: |
+        git config --global user.email "aryan.arunachalam@gmail.com"
+        git config --global user.name "arunvel1988"
+        git clone https://github.com/arunvel1988/docker_app_cd
+        cd docker_app_cd
+        git config --global --add safe.directory /workspace/output
+        
+        ls -ltr
+        
+        git config credential.helper store # Use credential helper to store credentials temporarily
+        git remote set-url origin $(params.url) # Set the repository URL
+        git push origin main # Push changes to the main branch
+        
+
+
+      volumeMounts:
+        - name: git-credentials
+          mountPath: /root/.git-credentials # Mount the git-credentials secret
+          readOnly: true
+  volumes:
+    - name: git-credentials
+      secret:
+        secretName: git-credentials # Use the git-credentials secret
