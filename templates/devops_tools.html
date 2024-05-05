@@ -150,18 +150,18 @@
                 <i class="fas fa-rocket"></i>
             </div>
             <div class="tool-info">
-                <h3>BuildPacks</h3>
-                <p>Install BuildPacks</p>
+                <h3>Sonarqube</h3>
+                <p>Install Sonarqube</p>
             </div>
             <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="buildpacks-spinner"> <!-- Added spinner ID -->
+                <div class="spinner" id="sonarqube-spinner"> <!-- Added spinner ID -->
                     <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
             <div>
-                <button class="install-btn" onclick="installTool('buildpacks')">Install</button>
-                <button class="delete-btn" onclick="deleteTool('buildpacks')">Delete</button>
-                <button class="install-btn" onclick="buildpacks('buildpacks')">BuildPack Details</button>
+                <button class="install-btn" onclick="installTool('sonarqube')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('sonarqube')">Delete</button>
+                <button class="install-btn" onclick="sonarqube('sonarqube')">Sonarqube Details</button>
             </div>
         </div>
 
@@ -425,8 +425,8 @@
             window.open("/airflow", "_blank");
         }
 
-        function buildpacks() {
-            window.open("/buildpacks", "_blank");
+        function sonarqube() {
+            window.open("/sonarqube", "_blank");
         }
 
         

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SonarQube Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative; /* Added */
+        }
+
+        .message {
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            position: absolute; /* Added */
+            top: 10px; /* Adjusted */
+            right: 10px; /* Added */
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-button:hover {
+            background-color: #d32f2f;
+        }
+
+        .dashboard-link {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .dashboard-link:hover {
+            color: #0056b3;
+        }
+
+        .info {
+            margin-top: 30px;
+        }
+
+        .info p {
+            margin-bottom: 10px;
+        }
+
+        .info a {
+            color: #007bff;
+            text-decoration: underline;
+        }
+
+        .info a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SonarQube Dashboard</h1>
+        <p class="message">Click the link below to access the SonarQube dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_sonarqube }}" target="_blank">{{ dashboard_url_sonarqube }}</a></p>
+        
+        <a class="back-button" href="/sonarqube">Back</a> <!-- Added -->
+
+        <div class="info">
+            <h2>About SonarQube</h2>
+            <p>SonarQube is an open-source platform for continuous inspection of code quality.</p>
+            <p>Learn more about SonarQube on the <a href="https://www.sonarqube.org/" target="_blank">official SonarQube website</a>.</p>
+            <p>For cloud deployments, please use the public IP address of your instance.</p>
+            <p>Default usernname admin & password admin.</p>
+        </div>
+    </div>
+</body>
+</html>
