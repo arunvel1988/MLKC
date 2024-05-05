@@ -610,29 +610,47 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'apply', '-n', 'argocd', '-f', 'https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD installed successfully'})
             
-            elif selected_tool == 'buildpacks':
+            elif selected_tool == 'sonarqube':
                 # Install ArgoCD for CD
-                if is_buildpacks_installed():
-                    return jsonify({'success': True, 'message': 'buildpacks is already installed'})
+                if is_sonarqube_installed():
+                    return jsonify({'success': True, 'message': 'sonarqube is already installed'})
                 
+
+# Command: helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
+                subprocess.run(['helm', 'repo', 'add', 'sonarqube', 'https://SonarSource.github.io/helm-chart-sonarqube'])
+
+# Command: helm repo update
+                subprocess.run(['helm', 'repo', 'update'])
+
+# Command: kubectl create namespace sonarqube-lts
+                subprocess.run(['kubectl', 'create', 'namespace', 'sonarqube'])
                 
 
-                url = "https://github.com/buildpacks/pack/releases/download/v0.33.2/pack-v0.33.2-linux.tgz"
-                curl_command = f"curl -sSL '{url}'"
-                tar_command = "sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack"
+# Define the data for values.yaml
+                values_data = {
+                    'persistence': {
+                    'enabled': True
+                    }
+                }
 
-                curl_process = subprocess.Popen(curl_command, stdout=subprocess.PIPE, shell=True)
-                tar_process = subprocess.Popen(tar_command, stdin=curl_process.stdout, shell=True)
+# Write the data to values.yaml file
+                with open('values.yaml', 'w') as yaml_file:
+                    yaml.dump(values_data, yaml_file, default_flow_style=False)
 
-                curl_process.stdout.close()
-                exit_code = tar_process.wait()
+# Now you can run your subprocess command with the created values.yaml file
 
-                if exit_code != 0:
-                    print("Error occurred during the installation process.")
-                    return jsonify({'success': True, 'message': 'Not installed installed successfully'})
-                else:
-                    print("Pack buildpack installed successfully.")
-                    return jsonify({'success': True, 'message': 'installed successfully'})
+                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube', '-f', 'values.yaml'])
+
+
+# Command: helm upgrade --install -n sonarqube-lts sonarqube sonarqube/sonarqube-lts
+                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube'])
+
+                return jsonify({'success': True, 'message': 'Sonarqube installed successfully'})
+            
+
+                
+
+       
 
 
 
@@ -867,33 +885,12 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'vault'], check=True)
                 return jsonify({'success': True, 'message': 'Vault deleted successfully'})
             
-            elif selected_tool == 'buildpacks':
+            elif selected_tool == 'sonarqube':
                 # Delete ArgoCD for CD
-                if not is_buildpacks_installed():
-                    return jsonify({'success': True, 'message': 'is not installed'})
-                
-                
-
-# Command to list files containing "pack" in /usr/local/bin/
-                list_command = "ls /usr/local/bin/ | grep pack"
-                list_process = subprocess.run(list_command, shell=True, capture_output=True, text=True)
-
-                if list_process.returncode == 0:
-                    files_found = list_process.stdout.strip()
-                    print(f"Files found: {files_found}")
-                else:
-                    print("No files found containing 'pack'.")
-
-# Command to remove the 'pack' binary
-                remove_command = "sudo rm /usr/local/bin/pack"
-                remove_process = subprocess.run(remove_command, shell=True, capture_output=True, text=True)
-
-                if remove_process.returncode == 0:
-                    return jsonify({'success': True, 'message': 'deleted successfully'})
-                    
-                else:
-                    print(f"Error removing the 'pack' binary: {remove_process.stderr}")
-                
+                if not is_sonarqube_installed():
+                    return jsonify({'success': True, 'message': 'sonarqube is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'sonarqube'], check=True)
+                return jsonify({'success': True, 'message': 'sonarqube deleted successfully'})
                 
 
 
@@ -936,21 +933,19 @@ def is_tekton_installed():
 
 
 
-def is_buildpacks_installed():
-    try:
-        # Run the 'pack' command and capture its exit code
-        subprocess.run(['pack'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        # If the command ran successfully, 'pack' is installed
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # If the command failed or the 'pack' binary was not found, return False
-        return False
-
-
 
 def is_airflow_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'airflow', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+def is_sonarqube_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'sonarqube-lts', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -2037,9 +2032,10 @@ def generate_template():
         docker_username = request.form.get('docker_username')
         docker_token = request.form.get('docker_token')
         image_url = request.form.get('image_url')
+        manifest_url = request.form.get('manifest_url')
 
         # Check for missing form fields
-        missing_fields = [field for field in [git_url, docker_registry, git_username, git_token, docker_username, docker_token,image_url] if not field]
+        missing_fields = [field for field in [git_url, docker_registry, git_username, git_token, docker_username, docker_token,image_url, manifest_url] if not field]
         if missing_fields:
             return f"Error: Missing form fields - {', '.join(missing_fields)}"
 
@@ -2478,49 +2474,55 @@ def grafana_dashboard():
 
 
 
+# Function to check if a port is in use
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+# Function to get an available port for port forwarding
+def get_available_port():
+    port = random.randint(8000, 9999)  # Modify port range as needed
+    while is_port_in_use(port):
+        port = random.randint(8000, 9999)  # Modify port range as needed
+    return port
 
 
-@app.route('/buildpacks', methods=['GET', 'POST'])
-def buildpacks():
-    if request.method == 'GET':
-        return render_template('buildpacks.html')
-    elif request.method == 'POST':
-        github_url = request.form.get('github_url')
-        if github_url:
-            try:
-                # Clone the repository
-                clone_command = f'git clone {github_url} app'
-                subprocess.run(clone_command, shell=True, check=True)
+@app.route('/sonarqube', methods=['GET'])
+def sonarqube():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_sonarqube = 'http://localhost:9098'
+    else:
+        dashboard_url_sonarqube = f'http://{instance_ip}:9098'
+    return render_template('sonarqube.html', dashboard_url_sonarqube=dashboard_url_sonarqube)
 
-                # Change to the app directory
-                subprocess.run('cd app', shell=True, check=True)
 
-                # Suggest a builder
-                suggest_command = 'pack builder suggest'
-                suggest_result = subprocess.run(suggest_command, shell=True, capture_output=True, text=True)
-                suggested_builder = suggest_result.stdout.strip()
 
-               
-
-                return render_template('builder_info.html', suggested_builder=suggested_builder)
-            except subprocess.CalledProcessError as e:
-                return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/sonarqube/dashboard', methods=['GET'])
+def sonarqube_dashboard():
+    try:
+        # Randomly select a port between 9000 and 9999
+        sonarqube_port = random.randint(9000, 9999)
+        
+        if is_port_in_use(sonarqube_port):
+            print(f"Port {sonarqube_port} is already in use, skipping port forwarding.")
         else:
-            return jsonify({'success': False, 'error': 'Please provide a GitHub URL.'}), 400
+            subprocess.Popen(['kubectl', 'port-forward', 'svc/sonarqube-sonarqube', f'{sonarqube_port}:9000', '-n', 'sonarqube', '--address', '0.0.0.0'])
 
-    elif request.method == 'POST' and request.form.get('confirm_build'):
-        suggested_builder = request.form.get('suggested_builder')
-        if suggested_builder:
-            try:
-                # Build the app using pack
-                build_command = f'pack build app --builder {suggested_builder}'
-                subprocess.run(build_command, shell=True, check=True)
-
-                return jsonify({'success': True, 'message': 'App built successfully.'})
-            except subprocess.CalledProcessError as e:
-                return jsonify({'success': False, 'error': str(e)}), 500
+        instance_ip = "localhost"  # You may adjust this based on your configuration
+        if instance_ip == 'localhost':
+            dashboard_url_sonarqube = f'http://localhost:{sonarqube_port}'
         else:
-            return jsonify({'success': False, 'error': 'No builder selected.'}), 400
+            dashboard_url_sonarqube = f'http://public-ip:{sonarqube_port}'
+
+        
+        
+        return render_template('sonarqube_dashboard.html', dashboard_url_sonarqube=dashboard_url_sonarqube)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding ArgoCD dashboard service: {str(e)}'}), 500
+
+
+
 
 
 
