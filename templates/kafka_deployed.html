@@ -3,11 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kafka Application Deployed</title>
+    <title>Ecomm Application Deployed</title>
+    <script>
+        window.onload = function() {
+            // Check if Kafka URL is a cloud instance with a public IP
+            var kafkaUrl = "{{ kafka_url }}";
+            var isCloudInstance = kafkaUrl.includes("public_ip");
+            if (isCloudInstance) {
+                // If it's a cloud instance, show a pop-up message
+                alert("This Kafka instance is hosted on a cloud with a public IP.");
+            }
+        }
+    </script>
 </head>
 <body>
     <h1>Kafka Application Deployed</h1>
-    <p>Kafka URL: {{ kafka_url }}</p>
+    <p>Kafka URL: <a href="{{ kafka_url }}">{{ kafka_url }}</a></p>
     <a href="/kafka" class="back-button">Back to Kafka</a>
 </body>
 </html>
