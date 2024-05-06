@@ -2379,22 +2379,26 @@ def argocd_dashboard():
 
 
 
-
+import shutil
 
 @app.route('/create_argocd_app', methods=['GET', 'POST'])
 def create_argocd_app():
+    import subprocess
+    import shutil
+
     if request.method == 'POST':
         # Check if argocd CLI is already installed
-        try:
-            subprocess.check_call(['argocd', 'version'])
-        except subprocess.CalledProcessError:
-            # Install argocd CLI if not already installed
+        if shutil.which('argocd') is None:
+        # Install argocd CLI if not already installed
             subprocess.check_call([
                 'curl', '-sSL', '-o', 'argocd-linux-amd64',
                 'https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64'
             ])
             subprocess.check_call(['sudo', 'install', '-m', '555', 'argocd-linux-amd64', '/usr/local/bin/argocd'])
             subprocess.check_call(['rm', 'argocd-linux-amd64'])
+        else:
+            print("ArgoCD CLI is already installed.")
+
 
         # Get username, password, and other form data
         username = request.form['username']
