@@ -1,5 +1,5 @@
-
-Managed Local Kubernetes Kind Cluster (MLKC)
+# kind_kubernetes_web_ui
+Managed Local Kubernetes Kind Cluster
 
 # Kind Cluster Management Application
 
