@@ -1817,7 +1817,7 @@ def deploy_kafka_app():
         create_namespace_if_not_exists('kafka-app')
 
         # Deploy Kafka application
-        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy_app.yaml', '-n', 'kafka-app'], check=True)
+        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy-website.yaml', '-n', 'kafka-app'], check=True)
 
         # Wait for Kafka pods to come up
         time.sleep(15)  # Adjust this delay as needed
@@ -1826,7 +1826,7 @@ def deploy_kafka_app():
         kafka_port = random.randint(9000, 9999)
 
         # Perform port forwarding with the random port
-        subprocess.Popen(['kubectl', 'port-forward', 'svc/ecomm-web-app-service', f'{kafka_port}:80', '-n', 'kafka-app'])
+        subprocess.Popen(['kubectl', 'port-forward', 'svc/ecomm-web-app-service', f'{kafka_port}:80', '-n', 'kafka-app', '--address', '0.0.0.0'])
 
         # Construct Kafka URL
         kafka_url = f'http://localhost:{kafka_port}'
@@ -1842,7 +1842,7 @@ def deploy_kafka_app():
 def delete_kafka_app():
     try:
         # Delete the kafka-app namespace
-        subprocess.run(['kubectl', 'delete', 'namespace', 'kafka-app'], check=True)
+        subprocess.run(['kubectl', 'delete', '-f', './tools/kafka/deploy-website.yaml', '-n', 'kafka-app'], check=True)
         return jsonify({'success': True, 'message': 'Kafka Ecomm Application namespace deleted successfully.'})
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -1874,12 +1874,12 @@ def deploy_analytics():
         analytics_port = random.randint(9000, 9999)
 
         # Perform port forwarding with the random port
-        subprocess.Popen(['kubectl', 'port-forward', 'svc/dash-analytics-service', f'{analytics_port}:8888', '-n', 'kafka-app'])
+        subprocess.Popen(['kubectl', 'port-forward', 'svc/dash-analytics-service', f'{analytics_port}:8888', '-n', 'kafka-app', '--address', '0.0.0.0'])
 
         # Construct Kafka URL
         analytics_url = f'http://localhost:{analytics_port}'
 
-        return render_template('analytics_deployed.html', kafka_url=analytics_url)
+        return render_template('analytics_deployed.html', analytics_url=analytics_url)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -1891,6 +1891,7 @@ def delete_analytics():
     try:
         # Delete the kafka-app namespace
         subprocess.run(['kubectl', 'delete', '-f', './tools/kafka/deploy-analytics.yaml', '-n', 'kafka-app'], check=True)
+        return jsonify({'success': True, 'message': 'Kafka Consumer Application namespace deleted successfully.'})
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': str(e)})
 
