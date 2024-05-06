@@ -50,6 +50,8 @@
     <button onclick="getTopics()">Get Topics</button>
     <button onclick="deployApp()">Deploy Kafka Ecomm Application</button>
     <button onclick="deleteApp()">Delete Kafka Ecomm Application</button>
+    <button onclick="deployanalyticsApp()">Deploy Analytics Application</button>
+    <button onclick="deleteanalyticsApp()">Delete Analytics Application</button>
 
     <a href="/" class="back-button">Back to Cluster</a>
 
@@ -177,6 +179,46 @@
             // Send a POST request to the server to delete Kafka Ecomm Application
             var xhr = new XMLHttpRequest();
             xhr.open("POST", "/kafka/delete_app", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful
+                        alert("Kafka Ecomm Application deleted successfully!");
+                    } else {
+                        // Request failed
+                        alert("Failed to delete Kafka Ecomm Application. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+
+        function deployanalyticsApp() {
+            // Send a POST request to the server to deploy Kafka Ecomm Application
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/deploy_analytics", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // Request was successful, display the HTML content in a new window
+                        var newWindow = window.open("", "_blank");
+                        newWindow.document.write(xhr.responseText);
+                    } else {
+                        // Request failed
+                        alert("Failed to deploy Kafka Ecomm Application. Error: " + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function deleteanalyticsApp() {
+            // Send a POST request to the server to delete Kafka Ecomm Application
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/kafka/delete_analytics", true);
             xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === XMLHttpRequest.DONE) {

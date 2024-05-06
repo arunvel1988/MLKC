@@ -993,7 +993,7 @@ def is_vault_installed():
 
 def is_kafka_installed():
     try:
-        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'strimzi', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kafka', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -1806,8 +1806,6 @@ def is_port_in_use(port):
 
 
 
-from flask import render_template
-
 @app.route('/kafka/deploy_app', methods=['POST'])
 def deploy_kafka_app():
     try:
@@ -1819,7 +1817,7 @@ def deploy_kafka_app():
         create_namespace_if_not_exists('kafka-app')
 
         # Deploy Kafka application
-        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy-app.yaml', '-n', 'kafka-app'], check=True)
+        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy_app.yaml', '-n', 'kafka-app'], check=True)
 
         # Wait for Kafka pods to come up
         time.sleep(15)  # Adjust this delay as needed
@@ -1849,6 +1847,59 @@ def delete_kafka_app():
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': str(e)})
 
+
+
+#########################################
+# deploy kafka analytics
+#########################################
+
+
+@app.route('/kafka/deploy_analytics', methods=['POST'])
+def deploy_analytics():
+    try:
+        # Check if Kafka is already deployed
+        if is_kafka_deployed():
+            return jsonify({'success': False, 'error': 'Kafka is already deployed.'})
+
+        # Create the kafka-app namespace if it doesn't exist
+        create_namespace_if_not_exists('kafka-app')
+
+        # Deploy Kafka application
+        subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/deploy-analytics.yaml', '-n', 'kafka-app'], check=True)
+
+        # Wait for Kafka pods to come up
+        time.sleep(15)  # Adjust this delay as needed
+
+        # Generate a random port number between 9000 and 9999
+        analytics_port = random.randint(9000, 9999)
+
+        # Perform port forwarding with the random port
+        subprocess.Popen(['kubectl', 'port-forward', 'svc/dash-analytics-service', f'{analytics_port}:8888', '-n', 'kafka-app'])
+
+        # Construct Kafka URL
+        analytics_url = f'http://localhost:{analytics_port}'
+
+        return render_template('analytics_deployed.html', kafka_url=analytics_url)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+
+
+@app.route('/kafka/delete_analytics', methods=['POST'])
+def delete_analytics():
+    try:
+        # Delete the kafka-app namespace
+        subprocess.run(['kubectl', 'delete', '-f', './tools/kafka/deploy-analytics.yaml', '-n', 'kafka-app'], check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+
+
+#########################################
+# end kafka analytics
+#########################################
 
 def is_kafka_deployed():
     # Check if Kafka pods are running in kafka-app namespace

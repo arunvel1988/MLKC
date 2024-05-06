@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dash-analytics-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dash-analytics-app
+  template:
+    metadata:
+      labels:
+        app: dash-analytics-app
+    spec:
+      containers:
+      - name: dash-analytics-container
+        image: arunvel1988/ecommawsconsumer6
+        ports:
+        - containerPort: 8888
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dash-analytics-service
+spec:
+  selector:
+    app: dash-analytics-app
+  ports:
+    - protocol: TCP
+      port: 8888
+      targetPort: 8888
+  type: ClusterIP  # Use NodePort or ClusterIP if LoadBalancer is not available in your environment
