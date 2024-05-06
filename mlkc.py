@@ -993,7 +993,7 @@ def is_vault_installed():
 
 def is_kafka_installed():
     try:
-        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kafka', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'strimzi', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
