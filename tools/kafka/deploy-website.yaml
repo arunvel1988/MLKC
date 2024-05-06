@@ -33,6 +33,6 @@ spec:
     spec:
       containers:
       - name: ecomm-web-app
-        image: arunvelpep1988/ecomm_web_app1
+        image: arunvel1988/ecomm-website_final
         ports:
         - containerPort: 9999 # Update with your container port
