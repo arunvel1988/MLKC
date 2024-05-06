@@ -22,6 +22,7 @@ install_docker_debian() {
 
     # Add the current user to the Docker group
     sudo usermod -aG docker $USER
+    sudo chmod 666 /var/run/docker.sock
 
     # Restart Docker service
     sudo systemctl restart docker
