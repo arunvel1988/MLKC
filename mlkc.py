@@ -893,8 +893,12 @@ def devops_tools(cluster_name):
                 # Delete Airflow
                 if not is_knative_installed():
                     return jsonify({'success': True, 'message': 'knative is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'knative-serving','--force'], check=True)
-                subprocess.run(['kubectl', 'delete', 'ns', 'knative-eventing','--force'], check=True)
+                
+                subprocess.run(['kubectl', 'delete', '-f', 'https://github.com/knative/serving/releases/download/knative-v1.14.0/serving-crds.yaml'], check=True)
+                subprocess.run(['kubectl', 'delete', '-f', 'https://github.com/knative/serving/releases/download/knative-v1.14.0/serving-core.yaml'], check=True)
+                subprocess.run(['kubectl', 'delete', '-f', 'https://github.com/knative/eventing/releases/download/knative-v1.14.1/eventing-crds.yaml'], check=True)
+                subprocess.run(['kubectl', 'delete', '-f', 'https://github.com/knative/eventing/releases/download/knative-v1.14.1/eventing-core.yaml'], check=True)
+                
                 return jsonify({'success': True, 'message': 'Knative deleted successfully'})
             
 
