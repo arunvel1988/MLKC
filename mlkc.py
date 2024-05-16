@@ -667,6 +667,40 @@ def devops_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'crossplane installed successfully'})
             
+            elif selected_tool == 'knative':
+                # Install knative
+                if is_knative_installed():
+                    return jsonify({'success': True, 'message': 'Knative is already installed'})
+                
+
+
+# Download serving-crds.yaml
+                crds_url = "https://github.com/knative/serving/releases/download/knative-v1.14.0/serving-crds.yaml"
+                crds_response = requests.get(crds_url)
+                crds_yaml = crds_response.content
+
+# Apply serving-crds.yaml
+                subprocess.run(["kubectl", "apply", "-f", "-"], input=crds_yaml, check=True)
+
+# Download serving-core.yaml
+                core_url = "https://github.com/knative/serving/releases/download/knative-v1.14.0/serving-core.yaml"
+                core_response = requests.get(core_url)
+                core_yaml = core_response.content
+                subprocess.run(["kubectl", "apply", "-f", "-"], input=core_yaml, check=True)
+
+                eventing_crds_url = "https://github.com/knative/eventing/releases/download/knative-v1.14.1/eventing-crds.yaml"
+                eventing_crds_response = requests.get(eventing_crds_url)
+                eventing_crds_yaml = eventing_crds_response.content
+                subprocess.run(["kubectl", "apply", "-f", "-"], input=eventing_crds_yaml, check=True)               
+                eventing_core_url = "https://github.com/knative/eventing/releases/download/knative-v1.14.1/eventing-core.yaml"
+                eventing_core_response = requests.get(eventing_core_url)
+                eventing_core_yaml = eventing_core_response.content
+                subprocess.run(["kubectl", "apply", "-f", "-"], input=eventing_core_yaml, check=True)                
+                return jsonify({'success': True, 'message': 'knative serving installed successfully'})
+                
+                
+                
+            
 
             elif selected_tool == 'airflow':
                 # Install Airflow
@@ -855,6 +889,14 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'airflow'], check=True)
                 return jsonify({'success': True, 'message': 'Apache Airflow deleted successfully'})
             
+            elif selected_tool == 'knative':
+                # Delete Airflow
+                if not is_knative_installed():
+                    return jsonify({'success': True, 'message': 'knative is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'knative-serving','--force'], check=True)
+                subprocess.run(['kubectl', 'delete', 'ns', 'knative-eventing','--force'], check=True)
+                return jsonify({'success': True, 'message': 'Knative deleted successfully'})
+            
 
             elif selected_tool == 'jaeger':
                 # Delete jaeger
@@ -930,7 +972,14 @@ def is_tekton_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
     
-
+def is_knative_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'knative-serving', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
 
 
 
