@@ -167,6 +167,26 @@
 
         <div class="tool-card">
             <div class="tool-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Knative</h3>
+                <p>Install Knative</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="knative-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('knative')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('knative')">Delete</button>
+                <button class="install-btn" onclick="sonarqube('knative')">Knative Details</button>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">
                 <i class="fas fa-cogs"></i>
             </div>
             <div class="tool-info">
