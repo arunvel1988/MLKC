@@ -1,0 +1,41 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: dockerhubversiononly
+  annotations:
+    description: Allows only Docker Hub images with a specific version tag. Blocks images with the "latest" tag or from other registries.
+spec:
+  crd:
+    spec:
+      names:
+        kind: dockerhubversiononly
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package dockerhubversiononly
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          imagename := input.review.object.spec.containers[_].image
+
+          # Block if the image is not from Docker Hub
+          not is_docker_hub_image(imagename)
+          msg := sprintf("Only images from Docker Hub are allowed. Image '%s' is not allowed.", [imagename])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Pod"
+          imagename := input.review.object.spec.containers[_].image
+
+          # Block if the image uses the "latest" tag
+          is_docker_hub_image(imagename)
+          endswith(imagename, ":latest")
+          msg := sprintf("Docker Hub images must use a specific version tag. Image '%s' is using the 'latest' tag.", [imagename])
+        }
+
+        # Function to check if the image is from Docker Hub
+        is_docker_hub_image(imagename) {
+          not contains(imagename, "/")
+        } else {
+          startswith(imagename, "docker.io/")
+        }

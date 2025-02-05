@@ -1,0 +1,12 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: dockerhubversiononly
+metadata:
+  name: enforce-dockerhub-versioned-images
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - "*"  # Apply to all namespaces
+  parameters: {}
