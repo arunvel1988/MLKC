@@ -1112,6 +1112,22 @@ def security_tools(cluster_name):
                 
                 
                 return jsonify({'success': True, 'message': 'Trivy installed successfully'})
+
+            elif selected_tool == 'opa':
+                if is_opa_installed():
+                    return jsonify({'success': True, 'message': 'OPA is already installed'})
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'gatekeeper-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'gatekeeper', 'https://open-policy-agent.github.io/gatekeeper/charts'], check=True)
+                
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'gatekeeper/gatekeeper', '--name-template=gatekeeper','-n','gatekeeper-system'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'OPA installed successfully'})
+            
             
 
             elif selected_tool == 'chaos':
@@ -1199,6 +1215,15 @@ def security_tools(cluster_name):
 def is_trivy_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'trivy-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_opa_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'gatekeeper-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0
