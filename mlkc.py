@@ -721,23 +721,42 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'Kafka is already installed'})
 
     # Add Strimzi Helm repository
-                subprocess.run(['kubectl', 'create', 'namespace', 'strimzi'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'strimzi', 'https://strimzi.io/charts'], check=True)
+                subprocess.run(['kubectl', 'create', 'namespace', 'kafka'], check=True)              
 
-    # Install Strimzi Kafka Operator
+    # Install Kafka Operator
                 subprocess.run([
-                    'helm', 'install', 'strimzi-kafka-operator', 'strimzi/strimzi-kafka-operator',
-                    '--version', '0.38.0',
-                    '-n', 'strimzi',
-                
-                    '-f', './tools/kafka/strimzi-values.yaml'
+                    'kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka',                   
+                    '-n', 'kafka'               
+               
                 ], check=True)
 
+                print("⏳ Waiting for Kafka operator pods to be in 'Running' state...")
+
+                timeout_seconds = 120
+                interval = 5
+                elapsed = 0
+
+                while elapsed < timeout_seconds:
+                    try:
+                        output = subprocess.check_output(['kubectl', 'get', 'pods', '-n', 'kafka'], text=True)
+                        print(output)
+
+                        if "Running" in output:
+                            print("✅ Kafka operator pods are running.")
+                            break
+                    except subprocess.CalledProcessError as e:
+                        print("⚠️ Error checking pods:", e)
+
+                    time.sleep(interval)
+                    elapsed += interval
+                else:
+                    print("❌ Timeout: Kafka operator pods did not reach 'Running' state in 2 minutes.")
+
     # Apply Kafka Cluster YAML
-                subprocess.run(['kubectl', 'apply', '-f', './tools/kafka/kafka-cluster.yaml'], check=True)
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml'], check=True)
 
     # Wait for the Kafka Cluster to be ready
-                subprocess.run(['kubectl', 'wait', '--for=condition=Ready', '--timeout=300s', '-n', 'strimzi', 'kafka/my-cluster'], check=True)
+                subprocess.run(['kubectl', 'wait', '--for=condition=Ready', '--timeout=300s', '-n', 'kafka', 'kafka/my-cluster'], check=True)
 
     # You can add additional steps if needed, such as creating a service, configuring networking, etc.
 
