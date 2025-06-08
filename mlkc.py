@@ -730,6 +730,12 @@ def devops_tools(cluster_name):
                
                 ], check=True)
 
+                subprocess.run([
+                    'kubectl', 'wait', '--for=condition=available', 'deployment/strimzi-cluster-operator','--timeout=120s',                  
+                    '-n', 'kafka'               
+               
+                ], check=True)
+
                 
 
     # Apply Kafka Cluster YAML
