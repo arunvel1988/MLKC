@@ -1779,7 +1779,7 @@ import re
 def kafka_cluster_details():
     try:
         # Run the kubectl command to get details of the Kafka cluster
-        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'strimzi'], capture_output=True, check=True, text=True)
+        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'kafka'], capture_output=True, check=True, text=True)
         kafka_output = result.stdout
         print(kafka_output)
 
