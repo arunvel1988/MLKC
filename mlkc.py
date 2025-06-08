@@ -730,27 +730,7 @@ def devops_tools(cluster_name):
                
                 ], check=True)
 
-                print("⏳ Waiting for Kafka operator pods to be in 'Running' state...")
-
-                timeout_seconds = 120
-                interval = 5
-                elapsed = 0
-
-                while elapsed < timeout_seconds:
-                    try:
-                        output = subprocess.check_output(['kubectl', 'get', 'pods', '-n', 'kafka'], text=True)
-                        print(output)
-
-                        if "Running" in output:
-                            print("✅ Kafka operator pods are running.")
-                            break
-                    except subprocess.CalledProcessError as e:
-                        print("⚠️ Error checking pods:", e)
-
-                    time.sleep(interval)
-                    elapsed += interval
-                else:
-                    print("❌ Timeout: Kafka operator pods did not reach 'Running' state in 2 minutes.")
+                
 
     # Apply Kafka Cluster YAML
                 subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml'], check=True)
