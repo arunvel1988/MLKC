@@ -729,10 +729,10 @@ def devops_tools(cluster_name):
                     '-n', 'kafka'               
                
                 ], check=True)
-                import time               
-                time.sleep(60)
+                               
+                
 
-                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml','-n','kafka'], check=True)                             
+                subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml','-n','kafka'], check=True)                             
 
     
 
@@ -1760,7 +1760,7 @@ import re
 def kafka_cluster_details():
     try:
         # Run the kubectl command to get details of the Kafka cluster
-        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'strimzi'], capture_output=True, check=True, text=True)
+        result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'kafka'], capture_output=True, check=True, text=True)
         kafka_output = result.stdout
         print(kafka_output)
 
