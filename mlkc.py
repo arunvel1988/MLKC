@@ -729,6 +729,7 @@ def devops_tools(cluster_name):
                     '-n', 'kafka'               
                
                 ], check=True)
+                import time
                 print("Waiting 60 seconds for Strimzi components to initialize...")
                 time.sleep(60)
 
