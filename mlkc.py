@@ -729,17 +729,12 @@ def devops_tools(cluster_name):
                     '-n', 'kafka'               
                
                 ], check=True)
+                print("Waiting 60 seconds for Strimzi components to initialize...")
+                time.sleep(60)
 
-                subprocess.run([
-                    'kubectl', 'wait', '--for=condition=available', 'deployment/strimzi-cluster-operator','--timeout=120s',                  
-                    '-n', 'kafka'               
-               
-                ], check=True)
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml'], check=True)                             
 
-                
-
-    # Apply Kafka Cluster YAML
-                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml'], check=True)
+    
 
     # Wait for the Kafka Cluster to be ready
                 subprocess.run(['kubectl', 'wait', '--for=condition=Ready', '--timeout=300s', '-n', 'kafka', 'kafka/my-cluster'], check=True)
