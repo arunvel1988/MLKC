@@ -922,8 +922,8 @@ def devops_tools(cluster_name):
                 # Delete ArgoCD for CD
                 if not is_kafka_installed():
                     return jsonify({'success': True, 'message': 'Kafka is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'strimzi'], check=True)
-                return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
+                return jsonify({'success': True, 'message': 'Kafka deleted successfully'})
             
             elif selected_tool == 'vault':
                 # Delete ArgoCD for CD
