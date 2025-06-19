@@ -729,11 +729,10 @@ def devops_tools(cluster_name):
                     '-n', 'kafka'               
                
                 ], check=True)
-                import time
-                print("Waiting 60 seconds for Strimzi components to initialize...")
+                import time               
                 time.sleep(60)
 
-                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml'], check=True)                             
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml','-n','kafka'], check=True)                             
 
     
 
