@@ -725,14 +725,14 @@ def devops_tools(cluster_name):
 
     # Install Kafka Operator
                 subprocess.run([
-                    'kubectl', 'create', '-f', 'https://strimzi.io/install/latest?namespace=kafka',                   
+                    'kubectl', 'apply', '-f', 'https://strimzi.io/install/latest?namespace=kafka',                   
                     '-n', 'kafka'               
                
                 ], check=True)
                                
                 
 
-                subprocess.run(['kubectl', 'create', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml','-n','kafka'], check=True)                             
+                subprocess.run(['kubectl', 'apply', '-f', 'https://strimzi.io/examples/latest/kafka/kafka-single-node.yaml','-n','kafka'], check=True)                             
 
     
 
