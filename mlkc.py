@@ -1754,43 +1754,32 @@ def describe(cluster_name):
 
 
 
-import re
-
 @app.route('/kafka/', methods=['GET'])
 def kafka_cluster_details():
     try:
-        # Run the kubectl command to get details of the Kafka cluster
         result = subprocess.run(['kubectl', 'get', 'kafka', '-n', 'kafka'], capture_output=True, check=True, text=True)
-        kafka_output = result.stdout
-        print(kafka_output)
+        kafka_output = result.stdout.strip()
+        print("Kafka output:\n", kafka_output)
 
-        # Use regular expressions to extract the relevant details
-        pattern = re.compile(r'(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(\S+)?')
-        match = pattern.search(kafka_output)
-        if match:
-            kafka_cluster_name = match.group(1)
-            desired_kafka_replicas = int(match.group(2))
-            desired_zk_replicas = int(match.group(3))
-            ready = match.group(4) == 'True'
-            warnings = match.group(5) if match.group(5) else ""
+        lines = kafka_output.splitlines()
+        if len(lines) < 2:
+            raise ValueError("No Kafka cluster found")
 
-            # Construct the response
-            response = {
-                'success': True,
-                'kafka_cluster_name': kafka_cluster_name,
-                'desired_kafka_replicas': desired_kafka_replicas,
-                'desired_zk_replicas': desired_zk_replicas,
-                'ready': ready,
-                'warnings': warnings
-            }
+        data = lines[1]
+        
+        # Match only the name (first word in the line)
+        match = re.match(r'^(\S+)', data)
+        if not match:
+            raise ValueError("Kafka cluster name not found")
 
-            return render_template('kafka_cluster.html', data=response)
-        else:
-            raise ValueError("Data does not match expected format")
+        kafka_cluster_name = match.group(1)
+
+        return render_template('kafka_cluster.html', name=kafka_cluster_name)
 
     except (subprocess.CalledProcessError, ValueError) as e:
-        error_message = f"Error retrieving Kafka cluster details: {str(e)}"
-        return jsonify({'success': False, 'error': error_message})
+        error_message = f"Error: {str(e)}"
+        return render_template('kafka_cluster.html', error=error_message)
+
 
 
 
@@ -1807,7 +1796,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: {topic_name}
-  namespace: strimzi
+  namespace: kafka
   labels:
     strimzi.io/cluster: my-cluster
 spec:
@@ -1836,12 +1825,12 @@ def delete_topic():
         topic_name = request.form['topic_name']
 
         # Check if the topic exists before attempting to delete it
-        check_result = subprocess.run(['kubectl', 'get', 'kafkatopic', topic_name, '-n', 'strimzi'], capture_output=True, text=True)
+        check_result = subprocess.run(['kubectl', 'get', 'kafkatopic', topic_name, '-n', 'kafka'], capture_output=True, text=True)
         
         # Check if the command was successful and if the topic exists
         if check_result.returncode == 0 and check_result.stdout.strip():
             # Run the command to delete the Kafka topic
-            delete_result = subprocess.run(['kubectl', 'delete', 'kafkatopic', topic_name, '-n', 'strimzi'], capture_output=True, text=True)
+            delete_result = subprocess.run(['kubectl', 'delete', 'kafkatopic', topic_name, '-n', 'kafka'], capture_output=True, text=True)
 
             # Check if the command was successful
             if delete_result.returncode == 0:
@@ -1864,7 +1853,7 @@ def delete_topic():
 def list_topics():
     try:
         # Run the command to get the list of Kafka topics
-        result = subprocess.run(['kubectl', 'get', 'kafkatopic', '-n', 'strimzi'], capture_output=True, check=True, text=True)
+        result = subprocess.run(['kubectl', 'get', 'kafkatopic', '-n', 'kafka'], capture_output=True, check=True, text=True)
 
         # Extract topic names from the command output
         topics = [line.split()[0] for line in result.stdout.strip().split('\n')[1:]]
