@@ -1752,7 +1752,7 @@ def describe(cluster_name):
     # Add a default return statement for the GET method
     return render_template('describe.html')
 
-
+import re
 
 @app.route('/kafka/', methods=['GET'])
 def kafka_cluster_details():
