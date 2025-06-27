@@ -1095,6 +1095,15 @@ def is_kafka_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
 
+def is_minio_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'minio-operator', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
 
 def is_argocd_installed():
     try:
