@@ -2151,7 +2151,14 @@ def tekton():
     return render_template('tekton.html', dashboard_url_tekton=dashboard_url_tekton)
 
 
-
+@app.route('/minio', methods=['GET'])
+def tekton():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_minio = 'http://localhost:9097'
+    else:
+        dashboard_url_minio = f'http://{instance_ip}:9097'
+    return render_template('minio.html', dashboard_url_minio=dashboard_url_minio)
 
 
 @app.route('/tekton/dashboard', methods=['GET'])
