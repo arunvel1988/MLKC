@@ -795,8 +795,8 @@ def devops_tools(cluster_name):
 
                 return jsonify({'success': True, 'message': 'MinIO operator and tenant deployed successfully'})
 
-            except subprocess.CalledProcessError as e:
-                return jsonify({'success': False, 'message': f'Error: {e}'})
+                except subprocess.CalledProcessError as e:
+                    return jsonify({'success': False, 'message': f'Error: {e}'})
 
             
             elif selected_tool == 'vault':
