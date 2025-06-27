@@ -269,6 +269,26 @@
 
         <div class="tool-card">
             <div class="tool-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Kafka </h3>
+                <p>Install Minio.</p>
+            </div>
+            <div class="spinner-container">
+                <div class="spinner" id="minio-spinner">
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('minio)">Install</button>
+                <button class="delete-btn" onclick="deleteTool('minio')">Delete</button>
+                <button class="password-btn" onclick="openKafkaClusterDetails()">Minio Details</button>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">
                 <i class="fas fa-chart-line"></i>
             </div>
             <div class="tool-info">
