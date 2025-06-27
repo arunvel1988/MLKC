@@ -763,21 +763,41 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'Minio is already installed'})
                 # Install Minio
               
+ 
+
+
+            try:
+                # Step 1: Install MinIO Operator
                 subprocess.run(['kubectl', 'apply', '-k', 'github.com/minio/operator?ref=v5.0.18'], check=True)
-                import time
-                time.sleep(30)
 
-                
+                # Step 2: Wait for operator pod(s) to be running
+                operator_ready = False
+                for i in range(30):  # Try for up to 30 * 5 = 150 seconds
+                    print(f"Checking for MinIO operator pods... Attempt {i+1}")
+                    get_pods = subprocess.run(['kubectl', 'get', 'pods', '-n', 'minio-operator', '-o', 'json'],
+                                      capture_output=True, text=True)
+                    if get_pods.returncode == 0 and '"phase": "Running"' in get_pods.stdout:
+                        operator_ready = True
+                        break
+                    time.sleep(5)
 
-                subprocess.run(['kubectl', 'create', 'namespace', 'monitoring'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'prometheus-community', 'https://prometheus-community.github.io/helm-charts'], check=True)
-                
-                subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/kube-prometheus-stack', '--namespace', 'monitoring'], check=True)
+                if not operator_ready:
+                    return jsonify({'success': False, 'message': 'MinIO operator pods did not become ready in time'})
 
-                
-               
-                return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+                # Step 3: Generate tenant YAML
+                subprocess.run([
+                    'kubectl', 'kustomize',
+                    'https://github.com/minio/operator/examples/kustomization/base/'
+                ], check=True, stdout=open('tenant-base.yaml', 'w'))
+
+                # Step 4: Apply tenant YAML
+                subprocess.run(['kubectl', 'apply', '-f', 'tenant-base.yaml'], check=True)
+
+                return jsonify({'success': True, 'message': 'MinIO operator and tenant deployed successfully'})
+
+            except subprocess.CalledProcessError as e:
+                return jsonify({'success': False, 'message': f'Error: {e}'})
+
             
             elif selected_tool == 'vault':
                 if is_vault_installed():
