@@ -965,6 +965,14 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'Kafka is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'kafka'], check=True)
                 return jsonify({'success': True, 'message': 'Kafka deleted successfully'})
+
+            elif selected_tool == 'minio':
+                # Delete MINIO
+                if not is_minio_installed():
+                    return jsonify({'success': True, 'message': 'Minio is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'minio-tenant'], check=True)
+                subprocess.run(['kubectl', 'delete', 'ns', 'minio-operator'], check=True)
+                return jsonify({'success': True, 'message': 'Minio deleted successfully'})
             
             elif selected_tool == 'vault':
                 # Delete ArgoCD for CD
