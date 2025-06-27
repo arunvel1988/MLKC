@@ -757,6 +757,27 @@ def devops_tools(cluster_name):
                 
                
                 return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
+
+            elif selected_tool == 'minio':
+                if is_minio_installed():
+                    return jsonify({'success': True, 'message': 'Minio is already installed'})
+                # Install Minio
+              
+                subprocess.run(['kubectl', 'apply', '-k', 'github.com/minio/operator?ref=v5.0.18'], check=True)
+                import time
+                time.sleep(30)
+
+                
+
+                subprocess.run(['kubectl', 'create', 'namespace', 'monitoring'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'prometheus-community', 'https://prometheus-community.github.io/helm-charts'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'prometheus', 'prometheus-community/kube-prometheus-stack', '--namespace', 'monitoring'], check=True)
+
+                
+               
+                return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
             
             elif selected_tool == 'vault':
                 if is_vault_installed():
