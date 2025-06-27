@@ -2152,13 +2152,42 @@ def tekton():
 
 
 @app.route('/minio', methods=['GET'])
-def tekton():
+def minio():
     instance_ip = get_instance_ip()
     if instance_ip == 'localhost':
         dashboard_url_minio = 'http://localhost:9097'
     else:
         dashboard_url_minio = f'http://{instance_ip}:9097'
     return render_template('minio.html', dashboard_url_minio=dashboard_url_minio)
+
+
+@app.route('/minio/dashboard', methods=['GET'])
+def minio_dashboard():
+    try:
+        # Randomly select a port between 10000 and 11000
+        minio_port = random.randint(10000, 11000)
+        minio_namespace = 'minio-tenant'           # Update if your namespace is different
+        minio_tenant_name = 'minio'                # Update with your actual tenant name
+        service_name = f'{minio_tenant_name}-hl'   # High-level service name convention
+
+        if is_port_in_use(minio_port):
+            print(f"Port {minio_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{service_name}', f'{minio_port}:9000',
+                '-n', minio_namespace, '--address', '0.0.0.0'
+            ])
+
+        instance_ip = "localhost"  # Adjust based on deployment
+        if instance_ip == 'localhost':
+            dashboard_url_minio = f'http://localhost:{minio_port}'
+        else:
+            dashboard_url_minio = f'http://public-ip:{minio_port}'
+
+        return render_template('minio_dashboard.html', dashboard_url_minio=dashboard_url_minio)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding MinIO service: {str(e)}'}), 500
 
 
 @app.route('/tekton/dashboard', methods=['GET'])
