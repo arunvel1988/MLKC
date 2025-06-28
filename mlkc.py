@@ -758,15 +758,33 @@ def devops_tools(cluster_name):
                
                 return jsonify({'success': True, 'message': 'Prometheus and Grafana installed successfully'})
 
-           elif selected_tool == 'minio':
-                if is_vault_installed():
-                    return jsonify({'success': True, 'message': 'Vault is already installed'})
-                # Install Vault
-                subprocess.run(['kubectl', 'create', 'namespace', 'vault'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'hashicorp', 'https://helm.releases.hashicorp.com'], check=True)
-                
-                subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)
+            elif selected_tool == 'minio':
+                if is_minio_installed():
+                    return jsonify({'success': True, 'message': 'MinIO is already installed'})
+
+    # Step 1: Install MinIO Operator
+                result = subprocess.run(['kubectl', 'apply', '-k', 'github.com/minio/operator?ref=v5.0.18'])
+                if result.returncode != 0:
+                    return jsonify({'success': False, 'message': 'Failed to apply MinIO operator'})
+                import time
+                time.sleep(30)  # Wait for resources to settle
+
+    # Step 2: Generate tenant YAML
+                with open('tenant-base.yaml', 'w') as f:
+                    result = subprocess.run([
+                        'kubectl', 'kustomize',
+                        'https://github.com/minio/operator/examples/kustomization/base/'
+                    ], stdout=f)
+                    if result.returncode != 0:
+                        return jsonify({'success': False, 'message': 'Failed to generate MinIO tenant YAML'})
+
+    # Step 3: Apply tenant YAML
+                result = subprocess.run(['kubectl', 'apply', '-f', 'tenant-base.yaml'])
+                if result.returncode != 0:
+                    return jsonify({'success': False, 'message': 'Failed to apply MinIO tenant'})
+
+                return jsonify({'success': True, 'message': 'MinIO operator and tenant deployed successfully'})
+
 
             
             elif selected_tool == 'vault':
@@ -940,8 +958,8 @@ def devops_tools(cluster_name):
                 # Delete MINIO
                 if not is_minio_installed():
                     return jsonify({'success': True, 'message': 'Minio is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'minio-tenant'], check=True)
                 subprocess.run(['kubectl', 'delete', 'ns', 'minio-operator'], check=True)
+                
                 return jsonify({'success': True, 'message': 'Minio deleted successfully'})
             
             elif selected_tool == 'vault':
@@ -2125,9 +2143,9 @@ def tekton():
 def minio():
     instance_ip = get_instance_ip()
     if instance_ip == 'localhost':
-        dashboard_url_minio = 'http://localhost:9097'
+        dashboard_url_minio = 'http://localhost:9111'
     else:
-        dashboard_url_minio = f'http://{instance_ip}:9097'
+        dashboard_url_minio = f'http://{instance_ip}:9111'
     return render_template('minio.html', dashboard_url_minio=dashboard_url_minio)
 
 
