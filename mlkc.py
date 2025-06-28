@@ -2225,6 +2225,48 @@ def minio_dashboard():
         return jsonify({'success': False, 'error': f'Error port-forwarding MinIO service: {str(e)}'}), 500
 
 
+#############################################################
+# jenkins
+#################################################################
+
+@app.route('/jenkins', methods=['GET'])
+def jenkins():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_jenkins = 'http://localhost:8080'
+    else:
+        dashboard_url_jenkins = f'http://{instance_ip}:8080'
+    return render_template('jenkins.html', dashboard_url_jenkins=dashboard_url_jenkins)
+
+
+@app.route('/jenkins/dashboard', methods=['GET'])
+def jenkins_dashboard():
+    try:
+        jenkins_port = 8080
+        jenkins_namespace = 'jenkins'               # Change if your Jenkins is deployed in a different namespace
+        jenkins_service_name = 'jenkins'            # Typically "jenkins" for default Helm installs
+
+        if is_port_in_use(jenkins_port):
+            print(f"Port {jenkins_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{jenkins_service_name}', f'{jenkins_port}:{jenkins_port}',
+                '-n', jenkins_namespace, '--address', '0.0.0.0'
+            ])
+
+        instance_ip = "localhost"  # Adjust as needed
+        if instance_ip == 'localhost':
+            dashboard_url_jenkins = f'http://localhost:{jenkins_port}'
+        else:
+            dashboard_url_jenkins = f'http://public-ip:{jenkins_port}'
+
+        return render_template('jenkins_dashboard.html', dashboard_url_jenkins=dashboard_url_jenkins)
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Jenkins service: {str(e)}'}), 500
+
+
 @app.route('/tekton/dashboard', methods=['GET'])
 def tekton_dashboard():
     try:
@@ -2247,6 +2289,9 @@ def tekton_dashboard():
         return jsonify({'success': False, 'error': f'Error port-forwarding Tekton dashboard service: {str(e)}'}), 500
 
 
+#############################################################
+# jenkins
+#################################################################
 
 
 
