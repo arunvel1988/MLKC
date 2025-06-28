@@ -15,6 +15,7 @@
             color: #333;
             text-align: center;
             margin-bottom: 30px;
+            
         }
 
         .tools-container {
@@ -281,7 +282,7 @@
                 </div>
             </div>
             <div>
-                <button class="install-btn" onclick="installTool('minio)">Install</button>
+                <button class="install-btn" onclick="installTool('minio')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('minio')">Delete</button>
                 <button class="password-btn" onclick="openMinio()">Minio Details</button>
             </div>
@@ -447,6 +448,10 @@
         
         function jaeger() {
             window.open("/jaeger", "_blank");
+        }
+
+        function openMinio() {
+            window.open("/minio", "_blank");
         }
 
         function tekton() {
