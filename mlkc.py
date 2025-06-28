@@ -800,39 +800,49 @@ def devops_tools(cluster_name):
                 
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
-
             elif selected_tool == 'jenkins':
                 if is_jenkins_installed():
                     return jsonify({'success': True, 'message': 'Jenkins is already installed'})
-                # Install Jenkins
-                
-                subprocess.run(['helm', 'repo', 'add', 'jenkinsci','https://charts.jenkins.io'], check=True)      
-                subprocess.run(['helm', 'repo', 'update'], check=True)              
-                subprocess.run(['kubectl', 'apply', '-f', 'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-01-volume.yaml'], check=True)
-                subprocess.run(['kubectl', 'apply', '-f', 'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-02-sa.yaml'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'jenkinsci', 'https://charts.jenkins.io'], check=True)
-              
 
-            # Download default values.yaml from Jenkins chart
+    # Add Helm repo and update
+                subprocess.run(['helm', 'repo', 'add', 'jenkinsci', 'https://charts.jenkins.io'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+
+    # Apply volume and service account YAMLs
+                subprocess.run([
+                    'kubectl', 'apply', '-f',
+                    'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-01-volume.yaml'
+                ], check=True)
+                subprocess.run([
+                    'kubectl', 'apply', '-f',
+                    'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-02-sa.yaml'
+                ], check=True)
+
+    # Download and modify values.yaml
                 response = requests.get('https://raw.githubusercontent.com/jenkinsci/helm-charts/main/charts/jenkins/values.yaml')
                 values_yaml = response.text
 
-            # Modify key parameters
                 updated_yaml = values_yaml.replace('type: LoadBalancer', 'type: NodePort\n  nodePort: 32000')
                 updated_yaml = updated_yaml.replace('storageClassName: ""', 'storageClassName: "jenkins-pv"')
-                updated_yaml = updated_yaml.replace('serviceAccount:\n  create: true', 'serviceAccount:\n  create: false\n  name: jenkins\n  annotations: {}')
+                updated_yaml = updated_yaml.replace(
+                    'serviceAccount:\n  create: true',
+                    'serviceAccount:\n  create: false\n  name: jenkins\n  annotations: {}'
+                )
 
-            # Save to jenkins-values.yaml
+    # Save to file
                 with open('jenkins-values.yaml', 'w') as f:
                     f.write(updated_yaml)
 
-            # Create namespace if not exists
+    # Create namespace if not exists
                 subprocess.run(['kubectl', 'create', 'namespace', 'jenkins'], check=False)
 
-            # Install Jenkins
-                subprocess.run(['helm', 'install', 'jenkins', '-n', 'jenkins', '-f', 'jenkins-values.yaml', 'jenkinsci/jenkins'], check=True)
-                
-                    return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
+    # Install Jenkins
+                subprocess.run([
+                    'helm', 'install', 'jenkins', '-n', 'jenkins', '-f', 'jenkins-values.yaml', 'jenkinsci/jenkins'
+                ], check=True)
+
+                return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
+
             
             elif selected_tool == 'jaeger':
                 if is_jaeger_installed():
