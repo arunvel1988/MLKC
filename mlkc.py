@@ -800,6 +800,39 @@ def devops_tools(cluster_name):
                 
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
+
+            elif selected_tool == 'jenkins':
+                if is_jenkins_installed():
+                    return jsonify({'success': True, 'message': 'Jenkins is already installed'})
+                # Install Jenkins
+                
+                subprocess.run(['helm', 'repo', 'add', 'jenkinsci','https://charts.jenkins.io'], check=True)      
+                subprocess.run(['helm', 'repo', 'update'], check=True)              
+                subprocess.run(['kubectl', 'apply', '-f', 'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-01-volume.yaml'], check=True)
+                subprocess.run(['kubectl', 'apply', '-f', 'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-02-sa.yaml'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'jenkinsci', 'https://charts.jenkins.io'], check=True)
+              
+
+            # Download default values.yaml from Jenkins chart
+                response = requests.get('https://raw.githubusercontent.com/jenkinsci/helm-charts/main/charts/jenkins/values.yaml')
+                values_yaml = response.text
+
+            # Modify key parameters
+                updated_yaml = values_yaml.replace('type: LoadBalancer', 'type: NodePort\n  nodePort: 32000')
+                updated_yaml = updated_yaml.replace('storageClassName: ""', 'storageClassName: "jenkins-pv"')
+                updated_yaml = updated_yaml.replace('serviceAccount:\n  create: true', 'serviceAccount:\n  create: false\n  name: jenkins\n  annotations: {}')
+
+            # Save to jenkins-values.yaml
+                with open('jenkins-values.yaml', 'w') as f:
+                    f.write(updated_yaml)
+
+            # Create namespace if not exists
+                subprocess.run(['kubectl', 'create', 'namespace', 'jenkins'], check=False)
+
+            # Install Jenkins
+                subprocess.run(['helm', 'install', 'jenkins', '-n', 'jenkins', '-f', 'jenkins-values.yaml', 'jenkinsci/jenkins'], check=True)
+                
+                    return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
             
             elif selected_tool == 'jaeger':
                 if is_jaeger_installed():
@@ -911,6 +944,13 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
             
 
+
+            elif selected_tool == 'jenkins':
+                # Delete Airflow
+                if not is_jekins_installed():
+                    return jsonify({'success': True, 'message': 'jenkins is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'jenkins'], check=True)
+                return jsonify({'success': True, 'message': 'Jenkins deleted successfully'})
 
             elif selected_tool == 'airflow':
                 # Delete Airflow
@@ -1043,7 +1083,14 @@ def is_sonarqube_installed():
     except subprocess.CalledProcessError:
         return False  # Return False if there was an error executing the command
 
-
+def is_jenkins_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'jenkins', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
 def is_jaeger_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'observability', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
