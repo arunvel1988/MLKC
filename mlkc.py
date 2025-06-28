@@ -807,6 +807,7 @@ def devops_tools(cluster_name):
     # Add Helm repo and update
                 subprocess.run(['helm', 'repo', 'add', 'jenkinsci', 'https://charts.jenkins.io'], check=True)
                 subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['kubectl', 'create', 'namespace', 'jenkins'], check=False)
 
     # Apply volume and service account YAMLs
                 subprocess.run([
@@ -834,7 +835,7 @@ def devops_tools(cluster_name):
                     f.write(updated_yaml)
 
     # Create namespace if not exists
-                subprocess.run(['kubectl', 'create', 'namespace', 'jenkins'], check=False)
+               
 
     # Install Jenkins
                 subprocess.run([
