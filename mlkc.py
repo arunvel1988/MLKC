@@ -839,7 +839,7 @@ def devops_tools(cluster_name):
 
     # Install Jenkins
                 subprocess.run([
-                    'helm', 'install', 'jenkins', '-n', 'jenkins', '-f', 'jenkins-values.yaml', 'jenkinsci/jenkins'
+                    'helm', 'install', 'jenkins', '-n', 'jenkins', '-f', './tools/jenkins-values.yaml', 'jenkinsci/jenkins'
                 ], check=True)
 
                 return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
