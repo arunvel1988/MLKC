@@ -812,7 +812,7 @@ def devops_tools(cluster_name):
     # Apply volume and service account YAMLs
                 subprocess.run([
                     'kubectl', 'apply', '-f',
-                    'https://raw.githubusercontent.com/jenkins-infra/jenkins.io/master/content/doc/tutorials/kubernetes/installing-jenkins-on-kubernetes/jenkins-01-volume.yaml'
+                    './tools/jenkins-sa.yaml'
                 ], check=True)
                 subprocess.run([
                     'kubectl', 'apply', '-f',
