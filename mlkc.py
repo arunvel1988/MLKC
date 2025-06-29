@@ -958,7 +958,7 @@ def devops_tools(cluster_name):
 
             elif selected_tool == 'jenkins':
                 # Delete Airflow
-                if not is_jekins_installed():
+                if not is_jenkins_installed():
                     return jsonify({'success': True, 'message': 'jenkins is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'jenkins'], check=True)
                 return jsonify({'success': True, 'message': 'Jenkins deleted successfully'})
