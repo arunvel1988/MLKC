@@ -264,6 +264,7 @@
             <div>
                 <button class="install-btn" onclick="installTool('jenkins')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('jenkins')">Delete</button>
+                 <button class="password-btn" onclick="fetchJenkinsPassword()">Jenkins Password</button>
                 <button class="password-btn" onclick="openJenkinsClusterDetails()">Jenkins Cluster</button>
             </div>
         </div>
@@ -498,7 +499,17 @@
             window.open("/sonarqube", "_blank");
         }
 
-        
+        function fetchJenkinsPassword() {
+            fetch('/get_jenkins_password')
+            .then(response => response.json())
+            .then(data => {
+                alert('Jenkins admin password: ' + data.password);
+            })
+            .catch(error => {
+                console.error('Error fetching Jenkins password:', error);
+                alert('Error fetching Jenkins password.');
+            });
+        }
 
 
   
