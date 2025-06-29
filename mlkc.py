@@ -328,6 +328,24 @@ def get_grafana_secret():
 
 
 
+@app.route('/get_jenkins_password', methods=['GET'])
+def get_jenkins_password():
+    try:
+        # Get the Jenkins secret using jsonpath
+        result = subprocess.run(
+            ['kubectl', 'get', 'secret', '-n', 'jenkins', 'jenkins', '-o', 'jsonpath={.data.jenkins-admin-password}'],
+            capture_output=True, check=True, text=True
+        )
+        encoded_password = result.stdout.strip()
+        decoded_password = base64.b64decode(encoded_password).decode('utf-8')
+
+        return jsonify({'success': True, 'password': decoded_password})
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': f'Error retrieving Jenkins password: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Unexpected error: {str(e)}'}), 500
+
 
 
 
