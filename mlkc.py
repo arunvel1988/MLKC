@@ -827,7 +827,7 @@ def devops_tools(cluster_name):
                 updated_yaml = updated_yaml.replace('storageClassName: ""', 'storageClassName: "jenkins-pv"')
                 updated_yaml = updated_yaml.replace(
                     'serviceAccount:\n  create: true',
-                    'serviceAccount:\n  create: false\n  name: jenkins\n  annotations: {}'
+                    'serviceAccount:\n  create: false'
                 )
 
     # Save to file
