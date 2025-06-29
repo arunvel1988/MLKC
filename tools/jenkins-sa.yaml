@@ -10,8 +10,7 @@ kind: ClusterRole
 metadata:
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
-    meta.helm.sh/release-name: jenkins
-    meta.helm.sh/release-namespace: jenkins
+
   labels:
     kubernetes.io/bootstrapping: rbac-defaults
   name: jenkins
