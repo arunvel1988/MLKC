@@ -2322,7 +2322,7 @@ def nginx():
 CERT_DIR = "./certs"
 KEY_FILE = f"{CERT_DIR}/tls.key"
 CERT_FILE = f"{CERT_DIR}/tls.crt"
-SECRET_NAME = "test-tls"
+SECRET_NAME = "localhost-tls"
 NAMESPACE = "nginx"
 INGRESS_FILE = "./tools/ingress/ingress.yaml"
 
