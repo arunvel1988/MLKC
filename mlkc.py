@@ -79,6 +79,10 @@ def generate_kind_config(name, num_control_plane_nodes, num_worker_nodes=1):
                         "hostPath": "/var/run/docker.sock",
                         "containerPath": "/var/run/docker.sock"
                     }
+                ],
+                "extraPortMappings": [
+                    {"containerPort": 80, "hostPort": 80, "protocol": "TCP"},
+                    {"containerPort": 443, "hostPort": 443, "protocol": "TCP"}
                 ]
             }
         ] * num_control_plane_nodes + [
@@ -2894,7 +2898,7 @@ def trivy():
 
 if __name__ == '__main__':
     create_database()
-    app.run(ssl_context=('./cert.pem', './key.pem'), port=8443,host='0.0.0.0',debug=True)
+    app.run(ssl_context=('./cert.pem', './key.pem'), port=443,host='0.0.0.0',debug=True)
 
     #app.run(host='0.0.0.0',port=5000,debug=True)
     
