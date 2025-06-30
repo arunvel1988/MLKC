@@ -2894,5 +2894,7 @@ def trivy():
 
 if __name__ == '__main__':
     create_database()
-    app.run(host='0.0.0.0',port=5000,debug=True)
+    app.run(ssl_context=('./cert.pem', './key.pem'), port=8443,host='0.0.0.0',debug=True)
+
+    #app.run(host='0.0.0.0',port=5000,debug=True)
     
