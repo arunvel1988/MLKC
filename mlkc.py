@@ -834,7 +834,7 @@ def devops_tools(cluster_name):
 
                 
                 
-                return jsonify({'success': True, 'message': 'Vault installed successfully'})
+                return jsonify({'success': True, 'message': 'Nginx installed successfully'})
             elif selected_tool == 'jenkins':
                 if is_jenkins_installed():
                     return jsonify({'success': True, 'message': 'Jenkins is already installed'})
@@ -1058,7 +1058,7 @@ def devops_tools(cluster_name):
             elif selected_tool == 'nginx':
                 # Delete ArgoCD for CD
                 if not is_nginx_installed():
-                    return jsonify({'success': True, 'message': 'Vault is not installed'})
+                    return jsonify({'success': True, 'message': 'Nginx is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'nginx'], check=True)
                 return jsonify({'success': True, 'message': 'nginx deleted successfully'})
             
@@ -2308,7 +2308,7 @@ def nginx():
         dashboard_url_nginx = 'https://app.local'
     else:
         dashboard_url_nginx = f'https://app.local'
-    return render_template('jenkins.html', dashboard_url_nginx=dashboard_url_nginx)
+    return render_template('nginx.html', dashboard_url_nginx=dashboard_url_nginx)
 
 
 
