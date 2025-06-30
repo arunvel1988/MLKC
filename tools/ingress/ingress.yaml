@@ -9,9 +9,9 @@ spec:
   tls:
   - hosts:
     - localhost
-    secretName: localhost-tls
+    secretName: test-tls
   rules:
-  - host: localhost
+  - host: 35.207.216.75
     http:
       paths:
         - path: /jenkins-app
