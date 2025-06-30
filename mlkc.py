@@ -2316,6 +2316,9 @@ def nginx():
     return render_template('nginx.html', dashboard_url_nginx=dashboard_url_nginx)
 
 
+
+
+
 CERT_DIR = "./certs"
 KEY_FILE = f"{CERT_DIR}/tls.key"
 CERT_FILE = f"{CERT_DIR}/tls.crt"
@@ -2325,7 +2328,6 @@ INGRESS_FILE = "./tools/ingress/ingress.yaml"
 
 def ensure_tls_secret():
     os.makedirs(CERT_DIR, exist_ok=True)
-    # Step 1: Create certs if not present
     if not os.path.exists(KEY_FILE) or not os.path.exists(CERT_FILE):
         subprocess.run([
             "openssl", "req", "-x509", "-nodes", "-days", "365",
@@ -2335,7 +2337,6 @@ def ensure_tls_secret():
             "-subj", "/CN=localhost"
         ], check=True)
 
-    # Step 2: Create secret if not already there
     secret_check = subprocess.run(
         ["kubectl", "get", "secret", SECRET_NAME, "-n", NAMESPACE],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -2348,39 +2349,17 @@ def ensure_tls_secret():
             "-n", NAMESPACE
         ], check=True)
 
-    # Step 3: Apply your existing ingress.yaml
     subprocess.run(["kubectl", "apply", "-f", INGRESS_FILE], check=True)
 
-@app.route('/add_rule', methods=['GET', 'POST'])
+@app.route('/add_rule', methods=['GET'])
 def add_rule():
-    if request.method == 'POST':
-        # Ensure cert & secret created + ingress.yaml applied once
+    try:
         ensure_tls_secret()
+        return jsonify({'success': True, 'message': 'Ingress rule applied successfully.'})
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'message': f'Error applying ingress: {e}'}), 500
 
-        service_port = request.form.get('service_port')
-        route_path = request.form.get('route_path')
 
-        # TODO: Logic here to patch/update ingress.yaml with new rules for service_port and route_path
-        # You might:
-        # - read ingress.yaml as YAML
-        # - append new paths/rules
-        # - write back ingress.yaml
-        # - re-apply it using kubectl apply -f ingress.yaml
-
-        # For demonstration, let's just re-apply ingress.yaml to pick changes
-        subprocess.run(["kubectl", "apply", "-f", INGRESS_FILE], check=True)
-
-        return jsonify({'success': True, 'message': f'Added rule for path {route_path} on port {service_port}'})
-
-    # GET: show a simple form
-    return render_template_string('''
-    <h2>Add Ingress Rule</h2>
-    <form method="post">
-      Service Port: <input type="text" name="service_port" required><br>
-      Route Path: <input type="text" name="route_path" required><br>
-      <input type="submit" value="Add Rule">
-    </form>
-    ''')
 
 @app.route('/jenkins/dashboard', methods=['GET'])
 def jenkins_dashboard():
