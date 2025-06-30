@@ -823,18 +823,55 @@ def devops_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
 
+            
             elif selected_tool == 'nginx':
                 if is_nginx_installed():
                     return jsonify({'success': True, 'message': 'Nginx is already installed'})
-                # Install Nginx
+
+    # Install Nginx Ingress Controller using Helm
                 subprocess.run(['kubectl', 'create', 'namespace', 'nginx'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'ingress-nginx', 'https://kubernetes.github.io/ingress-nginx'], check=True)
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'ingress-nginx', 'ingress-nginx/ingress-nginx','--namespace', 'nginx'], check=True)
+                subprocess.run(['helm', 'install', 'ingress-nginx', 'ingress-nginx/ingress-nginx', '--namespace', 'nginx'], check=True)
 
-                
-                
+                CERT_DIR = "./certs"
+                KEY_FILE = f"{CERT_DIR}/tls.key"
+                CERT_FILE = f"{CERT_DIR}/tls.crt"
+                SECRET_NAME = "localhost-tls"
+                NAMESPACE = "nginx"
+                INGRESS_FILE = "./tools/ingress/ingress.yaml"
+
+    # Step 1: Create certs if not present
+                os.makedirs(CERT_DIR, exist_ok=True)
+                if not os.path.exists(KEY_FILE) or not os.path.exists(CERT_FILE):
+                    subprocess.run([
+                        "openssl", "req", "-x509", "-nodes", "-days", "365",
+                        "-newkey", "rsa:2048",
+                        "-keyout", KEY_FILE,
+                        "-out", CERT_FILE,
+                        "-subj", "/CN=localhost"
+                    ], check=True)
+
+    # Step 2: Create secret if not already there
+                secret_check = subprocess.run(
+                    ["kubectl", "get", "secret", SECRET_NAME, "-n", NAMESPACE],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                if secret_check.returncode != 0:
+                    subprocess.run([
+                        "kubectl", "create", "secret", "tls", SECRET_NAME,
+                        "--key", KEY_FILE,
+                        "--cert", CERT_FILE,
+                        "-n", NAMESPACE
+                    ], check=True)
+
+    # Step 3: Apply your existing ingress.yaml
+                subprocess.run(["kubectl", "apply", "-f", INGRESS_FILE], check=True)
+
                 return jsonify({'success': True, 'message': 'Nginx installed successfully'})
+
+
+            
             elif selected_tool == 'jenkins':
                 if is_jenkins_installed():
                     return jsonify({'success': True, 'message': 'Jenkins is already installed'})
