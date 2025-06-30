@@ -2302,7 +2302,7 @@ def jenkins():
 
 
 @app.route('/nginx', methods=['GET'])
-def jenkins():
+def nginx():
     instance_ip = get_instance_ip()
     if instance_ip == 'localhost':
         dashboard_url_nginx = 'https://app.local'
