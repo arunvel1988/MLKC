@@ -822,6 +822,19 @@ def devops_tools(cluster_name):
                 
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
+
+            elif selected_tool == 'nginx':
+                if is_nginx_installed():
+                    return jsonify({'success': True, 'message': 'Nginx is already installed'})
+                # Install Nginx
+                subprocess.run(['kubectl', 'create', 'namespace', 'nginx'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'ingress-nginx', 'https://kubernetes.github.io/ingress-nginx'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'ingress-nginx', 'ingress-nginx/ingress-nginx','--namespace', 'nginx'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'Vault installed successfully'})
             elif selected_tool == 'jenkins':
                 if is_jenkins_installed():
                     return jsonify({'success': True, 'message': 'Jenkins is already installed'})
@@ -1042,6 +1055,13 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'vault'], check=True)
                 return jsonify({'success': True, 'message': 'Vault deleted successfully'})
             
+            elif selected_tool == 'nginx':
+                # Delete ArgoCD for CD
+                if not is_nginx_installed():
+                    return jsonify({'success': True, 'message': 'Vault is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'nginx'], check=True)
+                return jsonify({'success': True, 'message': 'nginx deleted successfully'})
+            
             elif selected_tool == 'sonarqube':
                 # Delete ArgoCD for CD
                 if not is_sonarqube_installed():
@@ -1090,6 +1110,15 @@ def is_tekton_installed():
 def is_knative_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'knative-serving', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+def is_nginx_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'nginx', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -2270,6 +2299,17 @@ def jenkins():
     else:
         dashboard_url_jenkins = f'http://{instance_ip}:8080'
     return render_template('jenkins.html', dashboard_url_jenkins=dashboard_url_jenkins)
+
+
+@app.route('/nginx', methods=['GET'])
+def jenkins():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_nginx = 'https://app.local'
+    else:
+        dashboard_url_nginx = f'https://app.local'
+    return render_template('jenkins.html', dashboard_url_nginx=dashboard_url_nginx)
+
 
 
 @app.route('/jenkins/dashboard', methods=['GET'])

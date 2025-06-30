@@ -206,6 +206,26 @@
             </div>
         </div>
 
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div class="tool-info">
+                <h3>Ingress Controller</h3>
+                <p>Install Nginx Ingress Controller</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="nginx-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('nginx')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('nginx')">Delete</button>
+                <button class="password-btn" onclick="nginx('nginx')">Nginx Ingress Controller</button>
+            </div>
+        </div>
+
         <div class="tools-container">
             <div class="tool-card">
                 <div class="tool-icon">
@@ -485,6 +505,10 @@
 
         function grafana() {
             window.open("/grafana", "_blank");
+        }
+
+         function nginx() {
+            window.open("/nginx", "_blank");
         }
 
         function argocd() {
