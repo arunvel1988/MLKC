@@ -1425,7 +1425,191 @@ def is_falco_installed():
 ###############################################################################################################
 
 
+#########################################################
+# AI TOOLS 
+#####################################################################
 
+
+@app.route('/ai_tools/<cluster_name>', methods=['GET', 'POST', 'DELETE'])
+def ai_tools(cluster_name):
+    if request.method == 'POST':
+        selected_tool = request.form.get('tool')
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'flink':
+                # Install Kyverno
+                if is_flink_installed():
+                    return jsonify({'success': True, 'message': 'Kyverno is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'kyverno'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'kyverno', 'https://kyverno.github.io/kyverno/'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                
+                subprocess.run(['helm', 'install', 'kyverno', 'kyverno/kyverno', '-n','kyverno'], check=True)
+                return jsonify({'success': True, 'message': 'Kyverno installed successfully'})
+            
+
+            elif selected_tool == 'trivy':
+                if is_trivy_installed():
+                    return jsonify({'success': True, 'message': 'Trivy is already installed'})
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'trivy-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'aqua', 'https://aquasecurity.github.io/helm-charts/'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'trivy-operator', 'aqua/trivy-operator','-n','trivy-system','--set','trivy.ignoreUnfixed=true'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'Trivy installed successfully'})
+
+            elif selected_tool == 'opa':
+                if is_opa_installed():
+                    return jsonify({'success': True, 'message': 'OPA is already installed'})
+                # Install Vault
+                subprocess.run(['kubectl', 'create', 'namespace', 'gatekeeper-system'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'gatekeeper', 'https://open-policy-agent.github.io/gatekeeper/charts'], check=True)
+                
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'gatekeeper/gatekeeper', '--name-template=gatekeeper','-n','gatekeeper-system'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'OPA installed successfully'})
+            
+            
+
+            elif selected_tool == 'chaos':
+                if is_chaos_installed():
+                    return jsonify({'success': True, 'message': 'chaos is already installed'})
+            
+                subprocess.run(['kubectl', 'create', 'namespace', 'chaos-mesh'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'chaos-mesh', 'https://charts.chaos-mesh.org'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'chaos-mesh', 'chaos-mesh/chaos-mesh','-n','chaos-mesh'], check=True)
+                return jsonify({'success': True, 'message': 'ChaosMesh installed successfully'})
+                
+                
+
+
+
+            elif selected_tool == 'falco':
+                # Install Falco
+                if is_falco_installed():
+                    return jsonify({'success': True, 'message': 'Falco is already installed'})
+                subprocess.run(['kubectl', 'create', 'namespace', 'falco'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'falcosecurity', 'https://falcosecurity.github.io/charts'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                webhook_url_base64 = "aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDA0QUhTRktMTTgvQjA1SzA3NkgyNlMvV2ZHRGQ5MFFDcENwNnFzNmFKNkV0dEg4"
+                webhook_url = base64.b64decode(webhook_url_base64).decode('utf-8')
+                command = [
+                    'helm', 'install', 'falco', '-n', 'falco',
+                    '--set', 'driver.kind=ebpf',
+                    '--set', 'tty=true',
+                    'falcosecurity/falco',
+                    '--set', 'falcosidekick.enabled=true',
+                    f'--set', f'falcosidekick.config.slack.webhookurl={webhook_url}',
+                    '--set', 'falcosidekick.config.slack.minimumpriority=notice',
+                    '--set', 'falcosidekick.config.customfields="user:arunvel"'
+                ]
+                subprocess.run(command, check=True)
+                return jsonify({'success': True, 'message': 'Falco installed successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    elif request.method == 'DELETE':
+        selected_tool = request.form.get('tool')
+        try:
+            context_name = f"kind-{cluster_name}"
+            subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
+            if selected_tool == 'kyverno':
+                if not is_kyverno_installed():
+                    return jsonify({'success': True, 'message': 'Kyverno is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
+                return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
+
+            elif selected_tool == 'trivy':
+                if not is_trivy_installed():
+                    return jsonify({'success': True, 'message': 'trivy is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'trivy-system'], check=True)
+                return jsonify({'success': True, 'message': 'Trivy deleted successfully'})
+
+
+            elif selected_tool == 'chaos':
+                if not is_chaos_installed():
+                    return jsonify({'success': True, 'message': 'Chaos Mesh is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'chaos-mesh'], check=True)
+                return jsonify({'success': True, 'message': 'Chaos Mesh deleted successfully'})
+                    
+                
+                    
+            
+            elif selected_tool == 'falco':
+                if not is_falco_installed():
+                    return jsonify({'success': True, 'message': 'Falco is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'falco'], check=True)
+                return jsonify({'success': True, 'message': 'Falco deleted successfully'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid tool selected'})
+        except subprocess.CalledProcessError as e:
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+    else:
+        return render_template('security_tools.html', cluster_name=cluster_name)
+
+
+
+
+def is_trivy_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'trivy-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_opa_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'gatekeeper-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_chaos_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'chaos-mesh', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_kyverno_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'kyverno', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+def is_falco_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'falco', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+######################################################
+# ai end
+#######################################################
 
 #################################################################################################
 #        TOOLS
