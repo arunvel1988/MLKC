@@ -1,0 +1,138 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - localhost
+    secretName: localhost-tls
+  rules:
+  - host: localhost
+    http:
+      paths:
+        - path: /jenkins-app
+          pathType: Prefix
+          backend:
+            service:
+              name: jenkins
+              port:
+                number: 8080
+        - path: /argocd-app
+          pathType: Prefix
+          backend:
+            service:
+              name: argocd-server
+              port:
+                number: 80
+        - path: /tekton-app
+          pathType: Prefix
+          backend:
+            service:
+              name: tekton-dashboard
+              port:
+                number: 9097
+        - path: /minio-app
+          pathType: Prefix
+          backend:
+            service:
+              name: minio
+              port:
+                number: 9443
+        - path: /ecomm
+          pathType: Prefix
+          backend:
+            service:
+              name: ecomm-web-app
+              port:
+                number: 8887
+        - path: /analytics
+          pathType: Prefix
+          backend:
+            service:
+              name: dash-analytics-service
+              port:
+                number: 8888
+        - path: /sonarqube-app
+          pathType: Prefix
+          backend:
+            service:
+              name: sonarqube
+              port:
+                number: 9000
+        - path: /knative-app
+          pathType: Prefix
+          backend:
+            service:
+              name: knative-service
+              port:
+                number: 80
+        - path: /airflow-app
+          pathType: Prefix
+          backend:
+            service:
+              name: airflow-web
+              port:
+                number: 8080
+        - path: /jaeger-app
+          pathType: Prefix
+          backend:
+            service:
+              name: jaeger
+              port:
+                number: 16686
+        - path: /kafka-app
+          pathType: Prefix
+          backend:
+            service:
+              name: kafka-ui
+              port:
+                number: 8080
+        - path: /prometheus-app
+          pathType: Prefix
+          backend:
+            service:
+              name: prometheus
+              port:
+                number: 9090
+        - path: /grafana-app
+          pathType: Prefix
+          backend:
+            service:
+              name: grafana
+              port:
+                number: 3000
+        - path: /istio-app
+          pathType: Prefix
+          backend:
+            service:
+              name: istio-ingressgateway
+              port:
+                number: 80
+
+        - path: /app1
+          pathType: Prefix
+          backend:
+            service:
+              name: istio-ingressgateway
+              port:
+                number: 9990
+
+        - path: /app2
+          pathType: Prefix
+          backend:
+            service:
+              name: istio-ingressgateway
+              port:
+                number: 9992
+
+        - path: /app3
+          pathType: Prefix
+          backend:
+            service:
+              name: istio-ingressgateway
+              port:
+                number: 80

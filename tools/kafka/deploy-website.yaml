@@ -8,7 +8,7 @@ spec:
     app: ecomm-web-app
   ports:
     - protocol: TCP
-      port: 80
+      port: 8887
       targetPort: 9999 # Update with your container port
   type: ClusterIP
 
