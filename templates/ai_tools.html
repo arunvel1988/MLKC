@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Tools </title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI Tools</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,21 +19,24 @@
             margin-bottom: 30px;
         }
 
+        .tools-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
         .tool-card {
             background-color: #fff;
-            border-radius: 5px;
+            border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            margin-right: 10px;
-            width: 250px; /* Set width for each tool card */
+            margin: 10px;
+            width: 260px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             transition: transform 0.3s ease;
             position: relative;
-            overflow: hidden; /* Prevent spinner overflow */
-            margin-bottom: 20px; /* Add margin between tool cards */
         }
 
         .tool-card:hover {
@@ -60,110 +63,104 @@
             color: #777;
         }
 
-        .install-btn, .delete-btn {
-            background-color: #4CAF50; /* Green color */
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 10px; /* Add margin to separate buttons */
-        }
-
-        .install-btn:hover, .delete-btn:hover {
-            background-color: #45a049;
-        }
-
-        .delete-btn {
-            background-color: #dc3545; /* Red color */
-            margin-left: 10px; /* Add margin between install and delete buttons */
-        }
-
-        .tools-container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
+        .spinner-container {
+            position: relative;
+            width: 100%;
+            height: 40px;
+            margin: 10px 0;
         }
 
         .spinner {
             display: none;
             position: absolute;
-            top: 50%;
+            top: 0;
             left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 9999;
+            transform: translateX(-50%);
         }
 
-        .message {
-            display: none;
-            text-align: center;
-            margin-top: 10px;
+        .btn {
+            padding: 10px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
         }
 
-        /* Added styles for spinner container */
-        .spinner-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
+        .install-btn {
+            background-color: #28a745;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+        }
+
+        .launch-btn {
+            background-color: #007bff;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
         }
 
         .back-button {
             position: absolute;
-            top: 20px; /* Adjust the distance from the top */
-            right: 20px; /* Adjust the distance from the right */
-            padding: 10px 20px;
-            background-color: #007bff; /* Blue color */
+            top: 20px;
+            right: 20px;
+            background-color: #007bff;
             color: #fff;
+            padding: 10px 16px;
             border: none;
             border-radius: 4px;
             text-decoration: none;
         }
 
         .back-button:hover {
-            background-color: #0056b3; /* Darker shade of blue on hover */
+            background-color: #0056b3;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+            display: none;
         }
     </style>
 </head>
 <body>
     <a href="{{ url_for('cluster_info', name=cluster_name) }}" class="back-button">Back to Cluster</a>
-    <h1>Security Tools</h1>
+    <h1>AI Tools</h1>
 
     <div class="tools-container">
         <div class="tool-card">
             <div class="tool-icon">
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-brain"></i>
             </div>
             <div class="tool-info">
                 <h3>Apache Flink</h3>
-                <p>Install Flink for policy enforcement.</p>
+                <p>Stream processing engine for AI pipelines.</p>
             </div>
-            <div class="spinner-container"> <!-- Added spinner container -->
-                <div class="spinner" id="flink-spinner"> <!-- Added spinner ID -->
-                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+            <div class="spinner-container">
+                <div class="spinner" id="flink-spinner">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
                 </div>
             </div>
             <div>
-                <button class="install-btn" onclick="installTool('flink')">Install</button>
-                <button class="delete-btn" onclick="deleteTool('flink')">Delete</button>
-                <button class="password-btn" onclick="flink('flink')">Apache Flink</button>
+                <button class="btn install-btn" onclick="installTool('flink')">Install</button>
+                <button class="btn delete-btn" onclick="deleteTool('flink')">Delete</button>
+                <button class="btn launch-btn" onclick="launchFlink()">Launch</button>
             </div>
         </div>
+    </div>
 
-       
-
-
-
-       
+    <div class="message" id="message"></div>
 
     <script>
         function installTool(tool) {
-            // Show spinner for the corresponding tool
             document.getElementById(`${tool}-spinner`).style.display = 'block';
-            // Hide message
             document.getElementById('message').style.display = 'none';
 
-            fetch('/security_tools/{{ cluster_name }}', {
+            fetch('/ai_tools/{{ cluster_name }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -172,73 +169,55 @@
             })
             .then(response => response.json())
             .then(data => {
-                // Hide spinner
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
-                document.getElementById('message').style.display = 'block';
-                document.getElementById('message').innerHTML = data.message;
-                if (data.success) {
-                    if (data.message.includes('already installed')) {
-                        alert(data.message);
-                    } else {
-                        alert(data.message);
-                    }
-                } else {
-                    alert('Error installing tool: ' + data.error);
-                }
+                const messageEl = document.getElementById('message');
+                messageEl.innerHTML = data.message;
+                messageEl.style.display = 'block';
+                alert(data.message);
             })
             .catch(error => {
-                console.error('Error installing tool:', error);
-                // Hide spinner
+                console.error('Install error:', error);
                 document.getElementById(`${tool}-spinner`).style.display = 'none';
-                // Show message
-                document.getElementById('message').style.display = 'block';
-                document.getElementById('message').innerHTML = 'An error occurred while installing the tool.';
-                alert('An error occurred while installing the tool.');
+                const messageEl = document.getElementById('message');
+                messageEl.innerHTML = 'An error occurred while installing.';
+                messageEl.style.display = 'block';
+                alert('An error occurred while installing.');
             });
         }
-        function flink() {
-            window.open("/flink", "_blank");
-        }
-
 
         function deleteTool(tool) {
-            if (confirm(`Are you sure you want to delete ${tool.toUpperCase()}?`)) {
-                // Show spinner for the corresponding tool
-                document.getElementById(`${tool}-spinner`).style.display = 'block';
-                // Hide message
-                document.getElementById('message').style.display = 'none';
+            if (!confirm(`Are you sure you want to delete ${tool}?`)) return;
 
-                fetch('/security_tools/{{ cluster_name }}', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `tool=${tool}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Hide spinner
-                    document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
-                    document.getElementById('message').style.display = 'block';
-                    document.getElementById('message').innerHTML = data.message;
-                    if (data.success) {
-                        alert(data.message);
-                    } else {
-                        alert('Error deleting tool: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting tool:', error);
-                    // Hide spinner
-                    document.getElementById(`${tool}-spinner`).style.display = 'none';
-                    // Show message
-                    document.getElementById('message').style.display = 'block';
-                    document.getElementById('message').innerHTML = 'An error occurred while deleting the tool.';
-                    alert('An error occurred while deleting the tool.');
-                });
-            }
+            document.getElementById(`${tool}-spinner`).style.display = 'block';
+            document.getElementById('message').style.display = 'none';
+
+            fetch('/ai_tools/{{ cluster_name }}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `tool=${tool}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById(`${tool}-spinner`).style.display = 'none';
+                const messageEl = document.getElementById('message');
+                messageEl.innerHTML = data.message;
+                messageEl.style.display = 'block';
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error('Delete error:', error);
+                document.getElementById(`${tool}-spinner`).style.display = 'none';
+                const messageEl = document.getElementById('message');
+                messageEl.innerHTML = 'An error occurred while deleting.';
+                messageEl.style.display = 'block';
+                alert('An error occurred while deleting.');
+            });
+        }
+
+        function launchFlink() {
+            window.open("/flink", "_blank");
         }
     </script>
 </body>
