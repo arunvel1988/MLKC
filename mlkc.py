@@ -2,7 +2,6 @@ from flask import Flask, render_template, request,jsonify, redirect, session, ur
 import sqlite3
 import subprocess
 import yaml
-import textwrap
 import json
 import threading
 import os
@@ -483,20 +482,12 @@ def check_preq():
         python3_installed = False
         python3_output = 'Python3 is not installed'
 
-    try:
-        docker_compose_output = subprocess.check_output(['docker-compose', '--version']).decode('utf-8').strip()
-        docker_compose_installed = True
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        docker_compose_installed = False
-        docker_compose_output = '''Docker Compose is not installed. 
-
     return render_template('check_preq.html',
                            docker_installed=docker_installed, docker_output=docker_output,
                            kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
                            kind_installed=kind_installed, kind_output=kind_output,
                            helm_installed=helm_installed, helm_output=helm_output,
-                           python3_installed=python3_installed, python3_output=python3_output,
-                           docker_compose_installed=docker_compose_installed, docker_compose_output=docker_compose_output)
+                           python3_installed=python3_installed, python3_output=python3_output)
 
 
 @app.route('/install_tool', methods=['POST'])
@@ -505,28 +496,19 @@ def install_tool():
 
     if tool == 'docker':
         subprocess.run(['chmod', '+x', './scripts/install_docker.sh'])
-        subprocess.run(['./scripts/install_docker.sh'])
+        subprocess.run(['./scripts/install_docker.sh'])  # Modify the path as necessary
     elif tool == 'kubectl':
         subprocess.run(['chmod', '+x', './scripts/install_kubectl.sh'])
         subprocess.run(['./scripts/install_kubectl.sh'])
     elif tool == 'kind':
         subprocess.run(['chmod', '+x', './scripts/install_kind.sh'])
-        subprocess.run(['./scripts/install_kind.sh'])
+        subprocess.run(['./scripts/install_kind.sh'])  # Modify the path as necessary
     elif tool == 'helm':
         subprocess.run(['chmod', '+x', './scripts/install_helm.sh'])
-        subprocess.run(['./scripts/install_helm.sh'])
+        subprocess.run(['./scripts/install_helm.sh'])  # Modify the path as necessary
     elif tool == 'python3':
-        subprocess.run(['chmod', '+x', './scripts/install_python3.sh'])
-        subprocess.run(['./scripts/install_python3.sh'])
-    elif tool == 'docker-compose':
-        # Install Docker Compose (inline command steps)
-        subprocess.run([
-            'sudo', 'curl', '-SL',
-            'https://github.com/docker/compose/releases/download/v2.32.0/docker-compose-linux-x86_64',
-            '-o', '/usr/local/bin/docker-compose'
-        ])
-        subprocess.run(['sudo', 'chmod', '+x', '/usr/local/bin/docker-compose'])
-        subprocess.run(['sudo', 'ln', '-sf', '/usr/local/bin/docker-compose', '/usr/bin/docker-compose'])
+        subprocess.run(['chmod', '+x', './scripts/install_python.sh'])
+        subprocess.run(['./scripts/install_python3.sh'])  # Modify the path as necessary
 
     return redirect(url_for('check_preq'))
 
@@ -910,25 +892,20 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
 
             
-            import subprocess
-            import time
-            import textwrap
-            from flask import jsonify
-
             elif selected_tool == 'jaeger':
                 if is_jaeger_installed():
                     return jsonify({'success': True, 'message': 'Jaeger is already installed'})
-        
+                
                 try:
-                    subprocess.run([
-                        'kubectl', 'apply', '-f',
-                        'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'
-                    ], check=True)
+                    subprocess.run(['kubectl', 'apply', '-f', 'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'], check=True)
+                    import time
                     time.sleep(30)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error installing cert-manager: {str(e)}'}), 500
 
     # Check cert-manager pods
+
+                import time
                 time.sleep(30)
 
                 try:
@@ -936,37 +913,45 @@ def devops_tools(cluster_name):
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error checking cert-manager pods: {str(e)}'}), 500
 
-    # Install Jaeger
+
+
+
+                # Install Vault
                 subprocess.run(['kubectl', 'create', 'namespace', 'observability'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'jaegertracing', 'https://jaegertracing.github.io/helm-charts'], check=True)
+                
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator', '-n', 'observability'], check=True)
-
+                subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator','-n','observability'], check=True)
+                import time
                 time.sleep(30)
 
+
+                
                 try:
                     subprocess.run(['kubectl', 'get', 'deployment', 'my-release-jaeger-operator', '-n', 'observability'], check=True)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error checking Jaeger operator deployment: {str(e)}'}), 500
 
+
+                import time
                 time.sleep(25)
 
-    # YAML for Jaeger instance — dedented safely
-                jaeger_instance_yaml = textwrap.dedent('''\
-                    apiVersion: jaegertracing.io/v1
-                    kind: Jaeger
-                    metadata:
-                      name: simplest
-                      namespace: observability
-                ''')
-
+ 
+                jaeger_instance_yaml = '''
+            apiVersion: jaegertracing.io/v1
+            kind: Jaeger
+            metadata:
+                name: simplest
+                namespace: observability
+                '''
                 try:
                     subprocess.run(['kubectl', 'apply', '-f', '-'], input=jaeger_instance_yaml.encode(), check=True)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error creating Jaeger instance: {str(e)}'}), 500
 
+    
+                
                 return jsonify({'success': True, 'message': 'Jaeger installed successfully'})
-
             
 
             elif selected_tool == 'istio':
