@@ -1567,11 +1567,11 @@ def ai_tools(cluster_name):
         try:
             context_name = f"kind-{cluster_name}"
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-            if selected_tool == 'kyverno':
+            if selected_tool == 'flink':
                 if not is_kyverno_installed():
-                    return jsonify({'success': True, 'message': 'Kyverno is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
-                return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
+                    return jsonify({'success': True, 'message': 'flink is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'flink'], check=True)
+                return jsonify({'success': True, 'message': 'flink deleted successfully'})
 
             elif selected_tool == 'trivy':
                 if not is_trivy_installed():
