@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: jenkins.jenkins.svc.cluster.local
+  ports:
+    - port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: argocd-server.argocd.svc.cluster.local
+  ports:
+    - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-dashboard
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: tekton-dashboard.tekton-pipelines.svc.cluster.local
+  ports:
+    - port: 9097
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: minio.minio.svc.cluster.local
+  ports:
+    - port: 9443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecomm-web-app
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: ecomm-web-app.ecommerce.svc.cluster.local
+  ports:
+    - port: 8887
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dash-analytics-service
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: dash-analytics-service.analytics.svc.cluster.local
+  ports:
+    - port: 8888
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: sonarqube.sonarqube.svc.cluster.local
+  ports:
+    - port: 9000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knative-service
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: knative-service.knative-serving.svc.cluster.local
+  ports:
+    - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-web
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: airflow-web.airflow.svc.cluster.local
+  ports:
+    - port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: jaeger.tracing.svc.cluster.local
+  ports:
+    - port: 16686
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: kafka-ui.kafka.svc.cluster.local
+  ports:
+    - port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: prometheus.monitoring.svc.cluster.local
+  ports:
+    - port: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: grafana.monitoring.svc.cluster.local
+  ports:
+    - port: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-ingressgateway
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: istio-ingressgateway.istio-system.svc.cluster.local
+  ports:
+    - port: 80
+    - port: 9990
+    - port: 9992
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+  namespace: nginx
+spec:
+  type: ExternalName
+  externalName: nexus.nexus.svc.cluster.local
+  ports:
+    - port: 8085

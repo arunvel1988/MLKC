@@ -211,6 +211,27 @@
                 <i class="fas fa-cogs"></i>
             </div>
             <div class="tool-info">
+                <h3>Nexus Artifactory</h3>
+                <p>Install Nexus Artifactory</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="nexus-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('nexus')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('nexus')">Delete</button>
+                <button class="password-btn" onclick="nexus('nexus')">Nexus Artifactory</button>
+                <button class="password-btn" onclick="fetchNexusPassword()">Nexus Password</button>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div class="tool-info">
                 <h3>Ingress Controller</h3>
                 <p>Install Nginx Ingress Controller</p>
             </div>
@@ -284,7 +305,7 @@
             <div>
                 <button class="install-btn" onclick="installTool('jenkins')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('jenkins')">Delete</button>
-                 <button class="password-btn" onclick="fetchJenkinsPassword()">Jenkins Password</button>
+                <button class="password-btn" onclick="fetchJenkinsPassword()">Jenkins Password</button>
                 <button class="password-btn" onclick="openJenkinsClusterDetails()">Jenkins Cluster</button>
             </div>
         </div>
@@ -523,6 +544,10 @@
             window.open("/sonarqube", "_blank");
         }
 
+        function nexus() {
+            window.open("/nexus", "_blank");
+        }
+
         function fetchJenkinsPassword() {
             fetch('/get_jenkins_password')
             .then(response => response.json())
@@ -534,6 +559,19 @@
                 alert('Error fetching Jenkins password.');
             });
         }
+
+        function fetchNexusPassword() {
+            fetch('/get_nexus_password')
+            .then(response => response.json())
+            .then(data => {
+                alert('Nexus admin password: ' + data.password);
+            })
+            .catch(error => {
+                console.error('Error fetching Nexus password:', error);
+                alert('Error fetching Nexus password.');
+            });
+        }
+
 
 
   

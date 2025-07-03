@@ -79,11 +79,11 @@ def generate_kind_config(name, num_control_plane_nodes, num_worker_nodes=1):
                         "hostPath": "/var/run/docker.sock",
                         "containerPath": "/var/run/docker.sock"
                     }
-                ],
-                "extraPortMappings": [
-                    {"containerPort": 80, "hostPort": 80, "protocol": "TCP"},
-                    {"containerPort": 443, "hostPort": 443, "protocol": "TCP"}
                 ]
+            #    "extraPortMappings": [
+            #        {"containerPort": 80, "hostPort": 80, "protocol": "TCP"}
+            #        {"containerPort": 443, "hostPort": 443, "protocol": "TCP"}
+            #    ]
             }
         ] * num_control_plane_nodes + [
             {"role": "worker"}
@@ -648,25 +648,19 @@ def devops_tools(cluster_name):
 # Command: kubectl create namespace sonarqube-lts
                 subprocess.run(['kubectl', 'create', 'namespace', 'sonarqube'])
                 
-
-# Define the data for values.yaml
-                values_data = {
-                    'persistence': {
-                    'enabled': True
-                    }
-                }
-
-# Write the data to values.yaml file
-                with open('values.yaml', 'w') as yaml_file:
-                    yaml.dump(values_data, yaml_file, default_flow_style=False)
-
-# Now you can run your subprocess command with the created values.yaml file
-
-                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube', '-f', 'values.yaml'])
+                subprocess.run([
+    'helm', 'upgrade', '--install',
+    'sonarqube',
+    'sonarqube/sonarqube',
+    '-n', 'sonarqube',
+    '--set', 'monitoringPasscode=myStrongPasscode',
+    '--set', 'community.enabled=true',
+    '--set', 'edition='
+])
 
 
-# Command: helm upgrade --install -n sonarqube-lts sonarqube sonarqube/sonarqube-lts
-                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube'])
+
+
 
                 return jsonify({'success': True, 'message': 'Sonarqube installed successfully'})
             
@@ -817,11 +811,24 @@ def devops_tools(cluster_name):
                 subprocess.run(['helm', 'repo', 'add', 'hashicorp', 'https://helm.releases.hashicorp.com'], check=True)
                 
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)
+                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)               
+                
+                return jsonify({'success': True, 'message': 'Vault installed successfully'})
+
+            
+            elif selected_tool == 'nexus':
+                if is_nexus_installed():
+                    return jsonify({'success': True, 'message': 'Nexus is already installed'})
+                # Install nexus
+                subprocess.run(['kubectl', 'create', 'namespace', 'nexus'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'sonatype', 'https://sonatype.github.io/helm3-charts'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'nexus', 'sonatype/nexus-repository-manager','-n','nexus'], check=True)
 
                 
                 
-                return jsonify({'success': True, 'message': 'Vault installed successfully'})
+                return jsonify({'success': True, 'message': 'Nexus installed successfully'})
 
             
             elif selected_tool == 'nginx':
@@ -993,6 +1000,13 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+
+            elif selected_tool == 'nexus':
+                # Delete nexus
+                if not is_nexus_installed():
+                    return jsonify({'success': True, 'message': 'Nexus is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'nexus'], check=True)
+                return jsonify({'success': True, 'message': 'Nexus deleted successfully'})
             
 
 
@@ -1106,6 +1120,15 @@ def devops_tools(cluster_name):
 def is_tekton_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'tekton-pipelines', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+def is_nexus_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'nexus', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -2436,6 +2459,69 @@ def tekton():
         dashboard_url_tekton = f'http://{instance_ip}:9097'
     return render_template('tekton.html', dashboard_url_tekton=dashboard_url_tekton)
 
+##########################################################################
+# NEXUS
+#################################################################################
+@app.route('/nexus', methods=['GET'])
+def nexus():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_nexus = 'http://localhost:8081'
+    else:
+        dashboard_url_nexus = f'http://{instance_ip}:8081'
+    return render_template('nexus.html', dashboard_url_nexus=dashboard_url_nexus)
+
+
+
+@app.route('/nexus/dashboard', methods=['GET'])
+def nexus_dashboard():
+    try:
+        # Nexus usually runs on port 8081
+        nexus_port = 8081
+        nexus_namespace = 'nexus'                    # Update if your Nexus namespace is different
+        nexus_service_name = 'nexus-nexus-repository-manager'         # Replace with your actual Nexus service name
+
+        if is_port_in_use(nexus_port):
+            print(f"Port {nexus_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{nexus_service_name}', f'{nexus_port}:{nexus_port}',
+                '-n', nexus_namespace, '--address', '0.0.0.0'
+            ])
+
+        instance_ip = "localhost"  # Adjust this if serving remotely
+        if instance_ip == 'localhost':
+            dashboard_url_nexus = f'http://localhost:{nexus_port}'
+        else:
+            dashboard_url_nexus = f'http://{instance_ip}:{nexus_port}'
+
+        return render_template('nexus_dashboard.html', dashboard_url_nexus=dashboard_url_nexus)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
+
+
+
+
+
+
+@app.route('/get_nexus_password', methods=['GET'])
+def get_nexus_password():
+    try:
+        # Run the kubectl exec command to read the Nexus admin password from the container
+        result = subprocess.run(
+            ['kubectl', 'exec', '-n', 'nexus', 'deploy/nexus-nexus-repository-manager', '--', 'cat', '/nexus-data/admin.password'],
+            capture_output=True, check=True, text=True
+        )
+        password = result.stdout.strip()
+        return jsonify({'success': True, 'password': password})
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error retrieving Nexus password: {e.stderr or str(e)}"
+        return jsonify({'success': False, 'error': error_message}), 500
+
+##########################################################################################################################
+
+
 
 @app.route('/minio', methods=['GET'])
 def minio():
@@ -2476,6 +2562,8 @@ def minio_dashboard():
         return jsonify({'success': False, 'error': f'Error port-forwarding MinIO service: {str(e)}'}), 500
 
 
+
+
 #############################################################
 # jenkins
 #################################################################
@@ -2509,6 +2597,7 @@ CERT_FILE = f"{CERT_DIR}/tls.crt"
 SECRET_NAME = "localhost-tls"
 NAMESPACE = "nginx"
 INGRESS_FILE = "./tools/ingress/ingress.yaml"
+SERVICE_FILE = "./tools/ingress/service.yaml"
 
 def ensure_tls_secret():
     os.makedirs(CERT_DIR, exist_ok=True)
@@ -2518,7 +2607,7 @@ def ensure_tls_secret():
             "-newkey", "rsa:2048",
             "-keyout", KEY_FILE,
             "-out", CERT_FILE,
-            "-subj", "/CN=localhost"
+            "-subj", "/CN=tennis-news.in"
         ], check=True)
 
     secret_check = subprocess.run(
@@ -2534,6 +2623,7 @@ def ensure_tls_secret():
         ], check=True)
 
     subprocess.run(["kubectl", "apply", "-f", INGRESS_FILE], check=True)
+    subprocess.run(["kubectl", "apply", "-f", SERVICE_FILE], check=True)
 
 @app.route('/add_rule', methods=['GET'])
 def add_rule():
@@ -3171,7 +3261,7 @@ def trivy():
 
 if __name__ == '__main__':
     create_database()
-    app.run(ssl_context=('./cert.pem', './key.pem'), port=8443,host='0.0.0.0',debug=True)
+    #app.run(ssl_context=('./cert.pem', './key.pem'), port=8443,host='0.0.0.0',debug=True)
 
-    #app.run(host='0.0.0.0',port=5000,debug=True)
+    app.run(host='0.0.0.0',port=5000,debug=True)
     
