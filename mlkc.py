@@ -2,6 +2,7 @@ from flask import Flask, render_template, request,jsonify, redirect, session, ur
 import sqlite3
 import subprocess
 import yaml
+import textwrap
 import json
 import threading
 import os
@@ -909,20 +910,25 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'Jenkins installed successfully'})
 
             
+            import subprocess
+            import time
+            import textwrap
+            from flask import jsonify
+
             elif selected_tool == 'jaeger':
                 if is_jaeger_installed():
                     return jsonify({'success': True, 'message': 'Jaeger is already installed'})
-                
+        
                 try:
-                    subprocess.run(['kubectl', 'apply', '-f', 'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'], check=True)
-                    import time
+                    subprocess.run([
+                        'kubectl', 'apply', '-f',
+                        'https://github.com/cert-manager/cert-manager/releases/download/v1.9.0/cert-manager.yaml'
+                    ], check=True)
                     time.sleep(30)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error installing cert-manager: {str(e)}'}), 500
 
     # Check cert-manager pods
-
-                import time
                 time.sleep(30)
 
                 try:
@@ -930,45 +936,37 @@ def devops_tools(cluster_name):
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error checking cert-manager pods: {str(e)}'}), 500
 
-
-
-
-                # Install Vault
+    # Install Jaeger
                 subprocess.run(['kubectl', 'create', 'namespace', 'observability'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'jaegertracing', 'https://jaegertracing.github.io/helm-charts'], check=True)
-                
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator','-n','observability'], check=True)
-                import time
+                subprocess.run(['helm', 'install', 'my-release', 'jaegertracing/jaeger-operator', '-n', 'observability'], check=True)
+
                 time.sleep(30)
 
-
-                
                 try:
                     subprocess.run(['kubectl', 'get', 'deployment', 'my-release-jaeger-operator', '-n', 'observability'], check=True)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error checking Jaeger operator deployment: {str(e)}'}), 500
 
-
-                import time
                 time.sleep(25)
 
- 
-                jaeger_instance_yaml = '''
-            apiVersion: jaegertracing.io/v1
-            kind: Jaeger
-            metadata:
-                name: simplest
-                namespace: observability
-                '''
+    # YAML for Jaeger instance — dedented safely
+                jaeger_instance_yaml = textwrap.dedent('''\
+                    apiVersion: jaegertracing.io/v1
+                    kind: Jaeger
+                    metadata:
+                      name: simplest
+                      namespace: observability
+                ''')
+
                 try:
                     subprocess.run(['kubectl', 'apply', '-f', '-'], input=jaeger_instance_yaml.encode(), check=True)
                 except subprocess.CalledProcessError as e:
                     return jsonify({'success': False, 'message': f'Error creating Jaeger instance: {str(e)}'}), 500
 
-    
-                
                 return jsonify({'success': True, 'message': 'Jaeger installed successfully'})
+
             
 
             elif selected_tool == 'istio':
