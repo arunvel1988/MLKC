@@ -1475,6 +1475,7 @@ def ai_tools(cluster_name):
             'kubectl', 'create', '-f',
             'https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml'
         ], check=True)
+                time.sleep(30)
                 subprocess.run(['kubectl', 'create', 'namespace', 'flink'], check=True)
                 subprocess.run([
             'helm', 'repo', 'add', 'flink-operator-repo',
