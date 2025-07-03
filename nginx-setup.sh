@@ -5,13 +5,15 @@ FLASK_PORT=${1:-5000}
 NGINX_CONF="/etc/nginx/sites-available/flask_ssl"
 NGINX_ENABLED="/etc/nginx/sites-enabled/flask_ssl"
 
-echo "🌐 Is this deployment for a valid domain or just localhost?"
-read -p "Enter 'domain' or 'localhost': " SITE_TYPE
+echo "🌐 Is this deployment for a valid domain or localhost?"
+read -p "Type 'localhost' for self-signed SSL, or enter your domain name (e.g., tennis-news.in): " SITE_INPUT
 
-if [[ "$SITE_TYPE" == "domain" ]]; then
-    read -p "📛 Enter your valid domain (e.g., tennis-news.in): " DOMAIN
-else
+if [[ "$SITE_INPUT" == "localhost" ]]; then
+    SITE_TYPE="localhost"
     DOMAIN="localhost"
+else
+    SITE_TYPE="domain"
+    DOMAIN="$SITE_INPUT"
 fi
 
 . /etc/os-release
@@ -51,7 +53,6 @@ sudo tee "$NGINX_CONF" > /dev/null <<EOF
 server {
     listen 443 ssl;
     server_name $DOMAIN;
-
 EOF
 
 if [[ "$SITE_TYPE" == "localhost" ]]; then
@@ -83,7 +84,7 @@ sudo tee -a "$NGINX_CONF" > /dev/null <<'EOF'
     }
 
     location /tekton-app {
-        proxy_pass http://localhost:32000;  # Adjust Tekton service port
+        proxy_pass http://localhost:32000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
