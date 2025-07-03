@@ -662,11 +662,10 @@ def devops_tools(cluster_name):
 
 # Now you can run your subprocess command with the created values.yaml file
 
-                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube', '-f', 'values.yaml'])
+                subprocess.run([    'helm', 'upgrade', '--install',    '-n', 'sonarqube',    '-n',    'sonarqube', 'sonarqube/sonarqube',    '-f', 'values.yaml',    '--set', 'admin'])
 
 
-# Command: helm upgrade --install -n sonarqube-lts sonarqube sonarqube/sonarqube-lts
-                subprocess.run(['helm', 'upgrade', '--install', '-n', 'sonarqube', 'sonarqube', 'sonarqube/sonarqube'])
+
 
                 return jsonify({'success': True, 'message': 'Sonarqube installed successfully'})
             
