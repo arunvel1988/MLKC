@@ -648,27 +648,13 @@ def devops_tools(cluster_name):
 # Command: kubectl create namespace sonarqube-lts
                 subprocess.run(['kubectl', 'create', 'namespace', 'sonarqube'])
                 
-
-# Define the data for values.yaml
-                values_data = {
-                    'persistence': {
-                    'enabled': True
-                    }
-                }
-
-# Write the data to values.yaml file
-                with open('values.yaml', 'w') as yaml_file:
-                    yaml.dump(values_data, yaml_file, default_flow_style=False)
-
-# Now you can run your subprocess command with the created values.yaml file
-
                 subprocess.run([
     'helm', 'upgrade', '--install',
-    'sonarqube', 'sonarqube/sonarqube',
     '-n', 'sonarqube',
-    '-f', 'values.yaml',
-    '--set', 'monitoringPasscode=myStrongPass'
+    'sonarqube',                # release name
+    'sonarqube/sonarqube'       # chart name
 ])
+
 
 
 
