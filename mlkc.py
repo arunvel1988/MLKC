@@ -826,8 +826,8 @@ def devops_tools(cluster_name):
                 if is_nexus_installed():
                     return jsonify({'success': True, 'message': 'Nexus is already installed'})
                 # Install nexus
-                subprocess.run(['kubectl', 'create', 'namespace', nexus'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'sonatype', ' https://sonatype.github.io/helm3-charts'], check=True)
+                subprocess.run(['kubectl', 'create', 'namespace', 'nexus'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'sonatype', 'https://sonatype.github.io/helm3-charts'], check=True)
                 
                 subprocess.run(['helm', 'repo', 'update'], check=True)
                 subprocess.run(['helm', 'install', 'nexus', 'sonatype/nexus-repository-manager','-n','nexus'], check=True)
