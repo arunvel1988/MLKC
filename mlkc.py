@@ -1021,7 +1021,10 @@ def devops_tools(cluster_name):
                 # Delete Airflow
                 if not is_flink_installed():
                     return jsonify({'success': True, 'message': 'flink is not installed'})
+
+                subprocess.run(['kubectl', 'delete', 'ns', 'cert-manager'], check=True)
                 subprocess.run(['kubectl', 'delete', 'ns', 'flink'], check=True)
+                
                 return jsonify({'success': True, 'message': 'flink deleted successfully'})
 
             elif selected_tool == 'airflow':
@@ -1470,9 +1473,9 @@ def ai_tools(cluster_name):
             if selected_tool == 'flink':
                 # Install Kyverno
                 if is_flink_installed():
-                    return jsonify({'success': True, 'message': 'Kyverno is already installed'})
+                    return jsonify({'success': True, 'message': 'Flink is already installed'})
                 subprocess.run([
-            'kubectl', 'create', '-f',
+            'kubectl', 'apply', '-f',
             'https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml'
         ], check=True)
                 time.sleep(30)
