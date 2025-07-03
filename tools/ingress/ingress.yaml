@@ -8,7 +8,7 @@ metadata:
 spec:
   tls:
   - hosts:
-    - localhost
+    - tennis-news.in
     secretName: loclhost-tls
   rules:
   - host: localhost
@@ -129,6 +129,7 @@ spec:
               port:
                 number: 9992
 
+
         - path: /app3
           pathType: Prefix
           backend:
@@ -136,3 +137,13 @@ spec:
               name: istio-ingressgateway
               port:
                 number: 80
+
+        - path: /nexus-app
+          pathType: Prefix
+          backend:
+            service:
+              name: nexus
+              port:
+                number: 8085
+
+    

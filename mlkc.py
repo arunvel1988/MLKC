@@ -2509,6 +2509,7 @@ CERT_FILE = f"{CERT_DIR}/tls.crt"
 SECRET_NAME = "localhost-tls"
 NAMESPACE = "nginx"
 INGRESS_FILE = "./tools/ingress/ingress.yaml"
+SERVICE_FILE = "./tools/ingress/service.yaml"
 
 def ensure_tls_secret():
     os.makedirs(CERT_DIR, exist_ok=True)
@@ -2518,7 +2519,7 @@ def ensure_tls_secret():
             "-newkey", "rsa:2048",
             "-keyout", KEY_FILE,
             "-out", CERT_FILE,
-            "-subj", "/CN=localhost"
+            "-subj", "/CN=tennis-news.in"
         ], check=True)
 
     secret_check = subprocess.run(
@@ -2534,6 +2535,7 @@ def ensure_tls_secret():
         ], check=True)
 
     subprocess.run(["kubectl", "apply", "-f", INGRESS_FILE], check=True)
+    subprocess.run(["kubectl", "apply", "-f", SERVICE_FILE], check=True)
 
 @app.route('/add_rule', methods=['GET'])
 def add_rule():
