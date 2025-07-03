@@ -651,8 +651,9 @@ def devops_tools(cluster_name):
                 subprocess.run([
     'helm', 'upgrade', '--install',
     '-n', 'sonarqube',
-    'sonarqube',                # release name
-    'sonarqube/sonarqube'       # chart name
+    'sonarqube',
+    'sonarqube/sonarqube',
+    '--set', 'monitoringPasscode=myStrongPasscode'
 ])
 
 
