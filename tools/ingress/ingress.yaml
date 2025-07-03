@@ -11,7 +11,7 @@ spec:
     - tennis-news.in
     secretName: loclhost-tls
   rules:
-  - host: localhost
+  - host: tennis-news.in
     http:
       paths:
         - path: /jenkins-app
