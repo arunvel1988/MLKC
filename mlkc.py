@@ -482,12 +482,20 @@ def check_preq():
         python3_installed = False
         python3_output = 'Python3 is not installed'
 
+    try:
+        docker_compose_output = subprocess.check_output(['docker-compose', '--version']).decode('utf-8').strip()
+        docker_compose_installed = True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        docker_compose_installed = False
+        docker_compose_output = '''Docker Compose is not installed. 
+
     return render_template('check_preq.html',
                            docker_installed=docker_installed, docker_output=docker_output,
                            kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
                            kind_installed=kind_installed, kind_output=kind_output,
                            helm_installed=helm_installed, helm_output=helm_output,
-                           python3_installed=python3_installed, python3_output=python3_output)
+                           python3_installed=python3_installed, python3_output=python3_output,
+                           docker_compose_installed=docker_compose_installed, docker_compose_output=docker_compose_output)
 
 
 @app.route('/install_tool', methods=['POST'])
@@ -496,19 +504,28 @@ def install_tool():
 
     if tool == 'docker':
         subprocess.run(['chmod', '+x', './scripts/install_docker.sh'])
-        subprocess.run(['./scripts/install_docker.sh'])  # Modify the path as necessary
+        subprocess.run(['./scripts/install_docker.sh'])
     elif tool == 'kubectl':
         subprocess.run(['chmod', '+x', './scripts/install_kubectl.sh'])
         subprocess.run(['./scripts/install_kubectl.sh'])
     elif tool == 'kind':
         subprocess.run(['chmod', '+x', './scripts/install_kind.sh'])
-        subprocess.run(['./scripts/install_kind.sh'])  # Modify the path as necessary
+        subprocess.run(['./scripts/install_kind.sh'])
     elif tool == 'helm':
         subprocess.run(['chmod', '+x', './scripts/install_helm.sh'])
-        subprocess.run(['./scripts/install_helm.sh'])  # Modify the path as necessary
+        subprocess.run(['./scripts/install_helm.sh'])
     elif tool == 'python3':
-        subprocess.run(['chmod', '+x', './scripts/install_python.sh'])
-        subprocess.run(['./scripts/install_python3.sh'])  # Modify the path as necessary
+        subprocess.run(['chmod', '+x', './scripts/install_python3.sh'])
+        subprocess.run(['./scripts/install_python3.sh'])
+    elif tool == 'docker-compose':
+        # Install Docker Compose (inline command steps)
+        subprocess.run([
+            'sudo', 'curl', '-SL',
+            'https://github.com/docker/compose/releases/download/v2.32.0/docker-compose-linux-x86_64',
+            '-o', '/usr/local/bin/docker-compose'
+        ])
+        subprocess.run(['sudo', 'chmod', '+x', '/usr/local/bin/docker-compose'])
+        subprocess.run(['sudo', 'ln', '-sf', '/usr/local/bin/docker-compose', '/usr/bin/docker-compose'])
 
     return redirect(url_for('check_preq'))
 
