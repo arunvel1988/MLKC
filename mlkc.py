@@ -2485,7 +2485,7 @@ def nexus_dashboard():
         # Nexus usually runs on port 8081
         nexus_port = 8081
         nexus_namespace = 'nexus'                    # Update if your Nexus namespace is different
-        nexus_service_name = 'nexus-service'         # Replace with your actual Nexus service name
+        nexus_service_name = 'nexus-nexus-repository-manager'         # Replace with your actual Nexus service name
 
         if is_port_in_use(nexus_port):
             print(f"Port {nexus_port} is already in use, skipping port forwarding.")
