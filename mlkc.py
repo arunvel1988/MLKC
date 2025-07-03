@@ -1580,10 +1580,10 @@ def ai_tools(cluster_name):
         except subprocess.CalledProcessError as e:
             return jsonify({'success': False, 'message': f'Error: {str(e)}'})
     else:
-        return render_template('security_tools.html', cluster_name=cluster_name)
+        return render_template('ai_tools.html', cluster_name=cluster_name)
 
 
-
+##############################################################################################################################################################
 
 def is_trivy_installed():
     try:
