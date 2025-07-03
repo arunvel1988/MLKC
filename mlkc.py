@@ -817,14 +817,12 @@ def devops_tools(cluster_name):
                 subprocess.run(['helm', 'repo', 'add', 'hashicorp', 'https://helm.releases.hashicorp.com'], check=True)
                 
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)
-
-                
+                subprocess.run(['helm', 'install', 'vault', 'hashicorp/vault','-n','vault'], check=True)               
                 
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
 
             
-             elif selected_tool == 'nexus':
+            elif selected_tool == 'nexus':
                 if is_nexus_installed():
                     return jsonify({'success': True, 'message': 'Nexus is already installed'})
                 # Install nexus
