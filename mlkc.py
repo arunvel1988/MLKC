@@ -824,6 +824,21 @@ def devops_tools(cluster_name):
                 return jsonify({'success': True, 'message': 'Vault installed successfully'})
 
             
+             elif selected_tool == 'nexus':
+                if is_nexus_installed():
+                    return jsonify({'success': True, 'message': 'Nexus is already installed'})
+                # Install nexus
+                subprocess.run(['kubectl', 'create', 'namespace', nexus'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'sonatype', ' https://sonatype.github.io/helm3-charts'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'nexus', 'sonatype/nexus-repository-manager','-n','nexus'], check=True)
+
+                
+                
+                return jsonify({'success': True, 'message': 'Nexus installed successfully'})
+
+            
             elif selected_tool == 'nginx':
                 if is_nginx_installed():
                     return jsonify({'success': True, 'message': 'Nginx is already installed'})
@@ -993,6 +1008,13 @@ def devops_tools(cluster_name):
                     return jsonify({'success': True, 'message': 'ArgoCD is not installed'})
                 subprocess.run(['kubectl', 'delete', 'ns', 'argocd'], check=True)
                 return jsonify({'success': True, 'message': 'ArgoCD deleted successfully'})
+
+            elif selected_tool == 'nexus':
+                # Delete nexus
+                if not is_nexus_installed():
+                    return jsonify({'success': True, 'message': 'Nexus is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'nexus'], check=True)
+                return jsonify({'success': True, 'message': 'Nexus deleted successfully'})
             
 
 
@@ -1106,6 +1128,15 @@ def devops_tools(cluster_name):
 def is_tekton_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'tekton-pipelines', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
+    except subprocess.CalledProcessError:
+        return False  # Return False if there was an error executing the command
+
+def is_nexus_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'nexus', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0  # Return True if there are any pods, False otherwise
@@ -2436,6 +2467,69 @@ def tekton():
         dashboard_url_tekton = f'http://{instance_ip}:9097'
     return render_template('tekton.html', dashboard_url_tekton=dashboard_url_tekton)
 
+##########################################################################
+# NEXUS
+#################################################################################
+@app.route('/nexus', methods=['GET'])
+def nexus():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_nexus = 'http://localhost:8081'
+    else:
+        dashboard_url_nexus = f'http://{instance_ip}:8081'
+    return render_template('nexus.html', dashboard_url_nexus=dashboard_url_nexus)
+
+
+
+@app.route('/nexus/dashboard', methods=['GET'])
+def nexus_dashboard():
+    try:
+        # Nexus usually runs on port 8081
+        nexus_port = 8081
+        nexus_namespace = 'nexus'                    # Update if your Nexus namespace is different
+        nexus_service_name = 'nexus-service'         # Replace with your actual Nexus service name
+
+        if is_port_in_use(nexus_port):
+            print(f"Port {nexus_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{nexus_service_name}', f'{nexus_port}:{nexus_port}',
+                '-n', nexus_namespace, '--address', '0.0.0.0'
+            ])
+
+        instance_ip = "localhost"  # Adjust this if serving remotely
+        if instance_ip == 'localhost':
+            dashboard_url_nexus = f'http://localhost:{nexus_port}'
+        else:
+            dashboard_url_nexus = f'http://{instance_ip}:{nexus_port}'
+
+        return render_template('nexus_dashboard.html', dashboard_url_nexus=dashboard_url_nexus)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
+
+
+
+
+
+
+@app.route('/get_nexus_password', methods=['GET'])
+def get_nexus_password():
+    try:
+        # Run the kubectl exec command to read the Nexus admin password from the container
+        result = subprocess.run(
+            ['kubectl', 'exec', '-n', 'nexus', 'deploy/nexus-nexus-repository-manager', '--', 'cat', '/nexus-data/admin.password'],
+            capture_output=True, check=True, text=True
+        )
+        password = result.stdout.strip()
+        return jsonify({'success': True, 'password': password})
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error retrieving Nexus password: {e.stderr or str(e)}"
+        return jsonify({'success': False, 'error': error_message}), 500
+
+##########################################################################################################################
+
+
 
 @app.route('/minio', methods=['GET'])
 def minio():
@@ -2474,6 +2568,8 @@ def minio_dashboard():
         return render_template('minio_dashboard.html', dashboard_url_minio=dashboard_url_minio)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error port-forwarding MinIO service: {str(e)}'}), 500
+
+
 
 
 #############################################################
