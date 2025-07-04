@@ -2577,6 +2577,82 @@ def minio():
     return render_template('minio.html', dashboard_url_minio=dashboard_url_minio)
 
 
+##########################################################################################
+# docker compose and portainer 
+#####################################################################################
+
+@app.route('/docker-compose', methods=['GET'])
+def docker_compose():
+    instance_ip = get_instance_ip()
+    portainer_url = None
+
+    # Check if portainer is running
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=portainer", "--format", "{{.Names}}"],
+            capture_output=True, text=True, check=True
+        )
+        containers = result.stdout.strip().splitlines()
+        if "portainer" in containers:
+            portainer_url = f"http://{instance_ip}:9000"
+    except Exception as e:
+        portainer_url = None  # Silently ignore
+
+    return render_template('docker_compose.html', portainer_url=portainer_url)
+
+
+@app.route('/docker-compose', methods=['GET'])
+def docker_compose():
+    instance_ip = get_instance_ip()
+    portainer_url = None
+
+    # Check if portainer is running
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=portainer", "--format", "{{.Names}}"],
+            capture_output=True, text=True, check=True
+        )
+        containers = result.stdout.strip().splitlines()
+        if "portainer" in containers:
+            portainer_url = f"http://{instance_ip}:9000"
+    except Exception as e:
+        portainer_url = None  # Silently ignore
+
+    return render_template('docker_compose.html', portainer_url=portainer_url)
+
+
+@app.route('/install-portainer', methods=['POST'])
+def install_portainer():
+    try:
+        # Check if Portainer container exists
+        result = subprocess.run(["docker", "ps", "-a", "--filter", "name=portainer", "--format", "{{.Status}}"],
+                                capture_output=True, text=True, check=True)
+        status = result.stdout.strip()
+
+        if status:
+            if not status.lower().startswith("up"):
+                # Container exists but not running, start it
+                subprocess.run(["docker", "start", "portainer"], check=True)
+                flash('✅ Portainer container started.', 'success')
+            else:
+                flash('ℹ️ Portainer is already running.', 'info')
+        else:
+            # Create and run Portainer container
+            subprocess.run([
+                "docker", "run", "-d", "--name", "portainer",
+                "-p", "9000:9000", "-p", "9443:9443",
+                "--restart=always", "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "-v", "portainer_data:/data", "portainer/portainer-ce"
+            ], check=True)
+            flash('✅ Portainer installed and started successfully!', 'success')
+    except subprocess.CalledProcessError as e:
+        flash(f'❌ Error: {e.stderr}', 'danger')
+
+    return redirect(url_for('docker_compose'))
+
+
+
+#####################################################################################
 @app.route('/minio/dashboard', methods=['GET'])
 def minio_dashboard():
     try:
