@@ -2601,24 +2601,7 @@ def docker_compose():
     return render_template('docker_compose.html', portainer_url=portainer_url)
 
 
-@app.route('/docker-compose', methods=['GET'])
-def docker_compose():
-    instance_ip = get_instance_ip()
-    portainer_url = None
 
-    # Check if portainer is running
-    try:
-        result = subprocess.run(
-            ["docker", "ps", "--filter", "name=portainer", "--format", "{{.Names}}"],
-            capture_output=True, text=True, check=True
-        )
-        containers = result.stdout.strip().splitlines()
-        if "portainer" in containers:
-            portainer_url = f"http://{instance_ip}:9000"
-    except Exception as e:
-        portainer_url = None  # Silently ignore
-
-    return render_template('docker_compose.html', portainer_url=portainer_url)
 
 
 @app.route('/install-portainer', methods=['POST'])
@@ -2650,6 +2633,26 @@ def install_portainer():
 
     return redirect(url_for('docker_compose'))
 
+
+
+@app.route('/upload-compose', methods=['POST'])
+def upload_compose():
+    file = request.files.get('compose_file')
+    if file and (file.filename.endswith('.yml') or file.filename.endswith('.yaml')):
+        filename = file.filename
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Run `docker-compose -f <file> up -d`
+        try:
+            subprocess.run(["docker-compose", "-f", file_path, "up", "-d"], check=True)
+            flash(f'✅ Compose file "{filename}" deployed successfully!', 'success')
+        except subprocess.CalledProcessError as e:
+            flash(f'❌ Error deploying file: {e.stderr}', 'danger')
+    else:
+        flash('⚠️ Please upload a valid .yml or .yaml file.', 'warning')
+
+    return redirect(url_for('docker_compose'))
 
 
 #####################################################################################
