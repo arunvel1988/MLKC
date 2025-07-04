@@ -2581,13 +2581,24 @@ def minio():
 ##########################################################################################
 # docker compose and portainer 
 #####################################################################################
+app.secret_key = 'supersecretkey'  # Required for flash messages
+
+# Upload folder for docker-compose files
+app.config['UPLOAD_FOLDER'] = './uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+def get_instance_ip():
+    # Returns local machine IP address or localhost fallback
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except Exception:
+        return 'localhost'
 
 @app.route('/docker-compose', methods=['GET'])
 def docker_compose():
     instance_ip = get_instance_ip()
     portainer_url = None
 
-    # Check if portainer is running
     try:
         result = subprocess.run(
             ["docker", "ps", "--filter", "name=portainer", "--format", "{{.Names}}"],
@@ -2596,21 +2607,19 @@ def docker_compose():
         containers = result.stdout.strip().splitlines()
         if "portainer" in containers:
             portainer_url = f"http://{instance_ip}:9000"
-    except Exception as e:
-        portainer_url = None  # Silently ignore
+    except Exception:
+        portainer_url = None  # silently ignore errors
 
-    return render_template('docker_compose.html', portainer_url=portainer_url)
-
-
-
-
+    return render_template('docker_compose.html', portainer_url=portainer_url, instance_ip=instance_ip)
 
 @app.route('/docker-compose/install-portainer', methods=['POST'])
 def install_portainer():
     try:
         # Check if Portainer container exists
-        result = subprocess.run(["docker", "ps", "-a", "--filter", "name=portainer", "--format", "{{.Status}}"],
-                                capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["docker", "ps", "-a", "--filter", "name=portainer", "--format", "{{.Status}}"],
+            capture_output=True, text=True, check=True
+        )
         status = result.stdout.strip()
 
         if status:
@@ -2625,16 +2634,16 @@ def install_portainer():
             subprocess.run([
                 "docker", "run", "-d", "--name", "portainer",
                 "-p", "9000:9000", "-p", "9443:9443",
-                "--restart=always", "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "--restart=always",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
                 "-v", "portainer_data:/data", "portainer/portainer-ce"
-            ], check=True)
+            ], check=True, capture_output=True, text=True)
             flash('✅ Portainer installed and started successfully!', 'success')
     except subprocess.CalledProcessError as e:
-        flash(f'❌ Error: {e.stderr}', 'danger')
+        error_msg = e.stderr if e.stderr else str(e)
+        flash(f'❌ Error: {error_msg}', 'danger')
 
     return redirect(url_for('docker_compose'))
-
-
 
 @app.route('/docker-compose/upload-compose', methods=['POST'])
 def upload_compose():
@@ -2644,12 +2653,17 @@ def upload_compose():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
 
-        # Run `docker-compose -f <file> up -d`
         try:
-            subprocess.run(["docker-compose", "-f", file_path, "up", "-d"], check=True)
+            subprocess.run(
+                ["docker-compose", "-f", file_path, "up", "-d"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
             flash(f'✅ Compose file "{filename}" deployed successfully!', 'success')
         except subprocess.CalledProcessError as e:
-            flash(f'❌ Error deploying file: {e.stderr}', 'danger')
+            error_msg = e.stderr if e.stderr else str(e)
+            flash(f'❌ Error deploying file: {error_msg}', 'danger')
     else:
         flash('⚠️ Please upload a valid .yml or .yaml file.', 'warning')
 

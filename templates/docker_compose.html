@@ -9,7 +9,6 @@
             text-align: center;
             padding-top: 50px;
         }
-
         .container {
             max-width: 700px;
             margin: auto;
@@ -18,12 +17,7 @@
             border-radius: 8px;
             box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
         }
-
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-
+        h1 { color: #333; margin-bottom: 20px; }
         .btn {
             display: inline-block;
             padding: 12px 24px;
@@ -34,19 +28,9 @@
             margin: 10px;
             transition: background-color 0.3s ease;
         }
-
-        .btn:hover {
-            background-color: #0056b3;
-        }
-
-        .upload-form {
-            margin-top: 30px;
-        }
-
-        .upload-form input[type="file"] {
-            margin-bottom: 15px;
-        }
-
+        .btn:hover { background-color: #0056b3; }
+        .upload-form { margin-top: 30px; }
+        .upload-form input[type="file"] { margin-bottom: 15px; }
         .back-button {
             display: inline-block;
             padding: 10px 20px;
@@ -57,18 +41,24 @@
             margin-top: 30px;
             transition: background-color 0.3s ease;
         }
-
-        .back-button:hover {
-            background-color: #d32f2f;
+        .back-button:hover { background-color: #d32f2f; }
+        .info { margin-top: 30px; }
+        .info p { text-align: justify; }
+        /* Flash message styling */
+        .flash {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 700px;
+            font-weight: bold;
         }
-
-        .info {
-            margin-top: 30px;
-        }
-
-        .info p {
-            text-align: justify;
-        }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .flash-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
@@ -84,10 +74,19 @@
             </p>
         </div>
 
-        {% if portainer_running %}
-            <a class="btn" href="http://localhost:9000" target="_blank">Open Portainer (localhost)</a>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message|safe }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if portainer_url %}
+            <a class="btn" href="{{ portainer_url }}" target="_blank">Open Portainer ({{ instance_ip }})</a>
             {% if instance_ip != 'localhost' %}
-                <a class="btn" href="http://{{ instance_ip }}:9000" target="_blank">Open Portainer ({{ instance_ip }})</a>
+                <a class="btn" href="http://localhost:9000" target="_blank">Open Portainer (localhost)</a>
             {% endif %}
         {% else %}
             <form method="post" action="{{ url_for('install_portainer') }}">
@@ -107,6 +106,3 @@
     </div>
 </body>
 </html>
-
-
-
