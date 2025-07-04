@@ -482,12 +482,20 @@ def check_preq():
         python3_installed = False
         python3_output = 'Python3 is not installed'
 
+    try:
+        compose_output = subprocess.check_output(['docker-compose', 'version']).decode('utf-8').strip()
+        compose_installed = True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        compose_installed = False
+        compose_output = 'Helm is not installed'
+
     return render_template('check_preq.html',
                            docker_installed=docker_installed, docker_output=docker_output,
                            kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
                            kind_installed=kind_installed, kind_output=kind_output,
                            helm_installed=helm_installed, helm_output=helm_output,
-                           python3_installed=python3_installed, python3_output=python3_output)
+                           python3_installed=python3_installed, python3_output=python3_output,
+                           compose_installed=compose_installed, compose_output=compose_output)
 
 
 @app.route('/install_tool', methods=['POST'])
@@ -509,6 +517,9 @@ def install_tool():
     elif tool == 'python3':
         subprocess.run(['chmod', '+x', './scripts/install_python.sh'])
         subprocess.run(['./scripts/install_python3.sh'])  # Modify the path as necessary
+    elif tool == 'docker-compose':
+        subprocess.run(['chmod', '+x', './scripts/install_docker_compose.sh'])
+        subprocess.run(['./scripts/install_docker_compose.sh'])  # Modify the path as necessary
 
     return redirect(url_for('check_preq'))
 
