@@ -2605,7 +2605,7 @@ def docker_compose():
 
 
 
-@app.route('/install-portainer', methods=['POST'])
+@app.route('/docker-compose/install-portainer', methods=['POST'])
 def install_portainer():
     try:
         # Check if Portainer container exists
@@ -2636,7 +2636,7 @@ def install_portainer():
 
 
 
-@app.route('/upload-compose', methods=['POST'])
+@app.route('/docker-compose/upload-compose', methods=['POST'])
 def upload_compose():
     file = request.files.get('compose_file')
     if file and (file.filename.endswith('.yml') or file.filename.endswith('.yaml')):
