@@ -1,53 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tekton</title>
+    <title>Docker Compose</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
+            background-color: #eef2f3;
             text-align: center;
             padding-top: 50px;
         }
 
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-        }
-
         .container {
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 700px;
+            margin: auto;
             background-color: #fff;
             padding: 30px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
         }
 
         .btn {
             display: inline-block;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: #fff;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
             text-decoration: none;
             border-radius: 5px;
+            margin: 10px;
             transition: background-color 0.3s ease;
-            margin-bottom: 20px;
         }
 
         .btn:hover {
-            background-color: #3e8e41;
+            background-color: #0056b3;
+        }
+
+        .upload-form {
+            margin-top: 30px;
+        }
+
+        .upload-form input[type="file"] {
+            margin-bottom: 15px;
         }
 
         .back-button {
             display: inline-block;
             padding: 10px 20px;
             background-color: #f44336;
-            color: #fff;
+            color: white;
             text-decoration: none;
             border-radius: 5px;
+            margin-top: 30px;
             transition: background-color 0.3s ease;
-            margin-top: 20px;
         }
 
         .back-button:hover {
@@ -59,22 +67,46 @@
         }
 
         .info p {
-            margin-bottom: 10px;
+            text-align: justify;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Tekton</h1>
-        <a class="btn" href="{{ url_for('tekton_dashboard') }}">Tekton Dashboard</a>
-        <a class="btn" href="{{ url_for('tekton_build') }}">Tekton CI</a>
+        <h1>Docker Compose</h1>
+
         <div class="info">
-            <h2>About Tekton</h2>
-            <p>Tekton is a powerful and flexible open-source framework for building continuous integration and continuous delivery (CI/CD) systems.</p>
-            <p>Learn more about Tekton and its features on the <a href="https://tekton.dev/" target="_blank">official Tekton website</a>.</p>
+            <h2>About Docker Compose</h2>
+            <p>
+                Docker Compose is a tool for defining and running multi-container Docker applications.
+                With Compose, you use a YAML file to configure your application’s services, and then
+                with a single command you create and start all the services from your configuration.
+            </p>
+        </div>
+
+        {% if portainer_running %}
+            <a class="btn" href="http://localhost:9000" target="_blank">Open Portainer (localhost)</a>
+            {% if instance_ip != 'localhost' %}
+                <a class="btn" href="http://{{ instance_ip }}:9000" target="_blank">Open Portainer ({{ instance_ip }})</a>
+            {% endif %}
+        {% else %}
+            <form method="post" action="{{ url_for('install_portainer') }}">
+                <button class="btn" type="submit">Install Portainer</button>
+            </form>
+        {% endif %}
+
+        <div class="upload-form">
+            <h2>Upload a Docker Compose YAML</h2>
+            <form method="post" action="{{ url_for('upload_compose') }}" enctype="multipart/form-data">
+                <input type="file" name="compose_file" accept=".yml,.yaml" required><br>
+                <button class="btn" type="submit">Upload & Run</button>
+            </form>
         </div>
 
         <a class="back-button" href="/">Back</a>
     </div>
 </body>
 </html>
+
+
+
