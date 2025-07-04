@@ -1017,6 +1017,16 @@ def devops_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'jenkins'], check=True)
                 return jsonify({'success': True, 'message': 'Jenkins deleted successfully'})
 
+            elif selected_tool == 'flink':
+                # Delete Airflow
+                if not is_flink_installed():
+                    return jsonify({'success': True, 'message': 'flink is not installed'})
+
+                subprocess.run(['kubectl', 'delete', 'ns', 'cert-manager'], check=True)
+                subprocess.run(['kubectl', 'delete', 'ns', 'flink'], check=True)
+                
+                return jsonify({'success': True, 'message': 'flink deleted successfully'})
+
             elif selected_tool == 'airflow':
                 # Delete Airflow
                 if not is_airflow_installed():
@@ -1463,12 +1473,25 @@ def ai_tools(cluster_name):
             if selected_tool == 'flink':
                 # Install Kyverno
                 if is_flink_installed():
-                    return jsonify({'success': True, 'message': 'Kyverno is already installed'})
-                subprocess.run(['kubectl', 'create', 'namespace', 'kyverno'], check=True)
-                subprocess.run(['helm', 'repo', 'add', 'kyverno', 'https://kyverno.github.io/kyverno/'], check=True)
+                    return jsonify({'success': True, 'message': 'Flink is already installed'})
+                subprocess.run([
+            'kubectl', 'apply', '-f',
+            'https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml'
+        ], check=True)
+                time.sleep(30)
+                subprocess.run(['kubectl', 'create', 'namespace', 'flink'], check=True)
+                subprocess.run([
+            'helm', 'repo', 'add', 'flink-operator-repo',
+            'https://downloads.apache.org/flink/flink-kubernetes-operator-1.12.0'
+        ], check=True)
                 subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run([
+            'helm', 'install', 'flink-kubernetes-operator',
+            'flink-operator-repo/flink-kubernetes-operator',
+            '-n', 'flink'
+        ], check=True)
                 
-                subprocess.run(['helm', 'install', 'kyverno', 'kyverno/kyverno', '-n','kyverno'], check=True)
+                return jsonify({'success': True, 'message': 'Apache Flink installed successfully.'})
                 return jsonify({'success': True, 'message': 'Kyverno installed successfully'})
             
 
@@ -1548,11 +1571,11 @@ def ai_tools(cluster_name):
         try:
             context_name = f"kind-{cluster_name}"
             subprocess.run(['kubectl', 'config', 'use-context', context_name], check=True)
-            if selected_tool == 'kyverno':
+            if selected_tool == 'flink':
                 if not is_kyverno_installed():
-                    return jsonify({'success': True, 'message': 'Kyverno is not installed'})
-                subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
-                return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
+                    return jsonify({'success': True, 'message': 'flink is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'flink'], check=True)
+                return jsonify({'success': True, 'message': 'flink deleted successfully'})
 
             elif selected_tool == 'trivy':
                 if not is_trivy_installed():
@@ -1580,9 +1603,19 @@ def ai_tools(cluster_name):
         except subprocess.CalledProcessError as e:
             return jsonify({'success': False, 'message': f'Error: {str(e)}'})
     else:
-        return render_template('security_tools.html', cluster_name=cluster_name)
+        return render_template('ai_tools.html', cluster_name=cluster_name)
 
 
+##############################################################################################################################################################
+
+def is_flink_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'flink', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
 
 
 def is_trivy_installed():
