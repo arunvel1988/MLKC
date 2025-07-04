@@ -180,6 +180,7 @@
                 <a href="{{ url_for('list_clusters') }}" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Back to Cluster List</a>
                 <a href="{{ url_for('delete_resource', cluster_name=name) }}" class="btn btn-danger"><i class="fas fa-share"></i>  DELETE </a>
                 <a href="{{ url_for('describe', cluster_name=name) }}" class="btn btn-success"><i class="fas fa-share"></i>  DESCRIBE </a>
+                <a href="{{ url_for('/docker-compose') }}" class="btn btn-success"><i class="fas fa-share"></i> DOCKER-COMPOSE </a>
                
             {% endif %}
         </div>
