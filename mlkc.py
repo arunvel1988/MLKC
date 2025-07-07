@@ -2575,6 +2575,47 @@ def nexus_dashboard():
         return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
 
 
+######################################################################################################
+# AWX
+#########################################################################################################
+
+@app.route('/awx', methods=['GET'])
+def nexus():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_nexus = 'http://localhost:8282'
+    else:
+        dashboard_url_nexus = f'http://{instance_ip}:8282'
+    return render_template('nexus.html', dashboard_url_nexus=dashboard_url_nexus)
+
+
+
+@app.route('/nexus/dashboard', methods=['GET'])
+def nexus_dashboard():
+    try:
+        # Nexus usually runs on port 8081
+        nexus_port = 8081
+        nexus_namespace = 'nexus'                    # Update if your Nexus namespace is different
+        nexus_service_name = 'nexus-nexus-repository-manager'         # Replace with your actual Nexus service name
+
+        if is_port_in_use(nexus_port):
+            print(f"Port {nexus_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{nexus_service_name}', f'{nexus_port}:{nexus_port}',
+                '-n', nexus_namespace, '--address', '0.0.0.0'
+            ])
+
+        instance_ip = "localhost"  # Adjust this if serving remotely
+        if instance_ip == 'localhost':
+            dashboard_url_nexus = f'http://localhost:{nexus_port}'
+        else:
+            dashboard_url_nexus = f'http://{instance_ip}:{nexus_port}'
+
+        return render_template('nexus_dashboard.html', dashboard_url_nexus=dashboard_url_nexus)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
 
 
 
@@ -2593,6 +2634,10 @@ def get_nexus_password():
         error_message = f"Error retrieving Nexus password: {e.stderr or str(e)}"
         return jsonify({'success': False, 'error': error_message}), 500
 
+
+######################################################################################################
+# AWX END
+#########################################################################################################
 ##########################################################################################################################
 
 
