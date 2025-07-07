@@ -2583,56 +2583,63 @@ def nexus_dashboard():
 def nexus():
     instance_ip = get_instance_ip()
     if instance_ip == 'localhost':
-        dashboard_url_nexus = 'http://localhost:8282'
+        dashboard_url_awx = 'http://localhost:8282'
     else:
-        dashboard_url_nexus = f'http://{instance_ip}:8282'
-    return render_template('nexus.html', dashboard_url_nexus=dashboard_url_nexus)
+        dashboard_url_awx = f'http://{instance_ip}:8282'
+    return render_template('awx.html', dashboard_url_awx=dashboard_url_awx)
 
 
 
-@app.route('/nexus/dashboard', methods=['GET'])
-def nexus_dashboard():
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+@app.route('/awx/dashboard', methods=['GET'])
+def awx_dashboard():
     try:
-        # Nexus usually runs on port 8081
-        nexus_port = 8081
-        nexus_namespace = 'nexus'                    # Update if your Nexus namespace is different
-        nexus_service_name = 'nexus-nexus-repository-manager'         # Replace with your actual Nexus service name
+        awx_port = 8282  # Local port to forward to
+        awx_target_port = 80  # Target port of the service in the cluster
+        awx_namespace = 'awx'
+        awx_service_name = 'awx-demo-service'
 
-        if is_port_in_use(nexus_port):
-            print(f"Port {nexus_port} is already in use, skipping port forwarding.")
+        if is_port_in_use(awx_port):
+            print(f"Port {awx_port} is already in use, skipping port forwarding.")
         else:
             subprocess.Popen([
                 'kubectl', 'port-forward',
-                f'svc/{nexus_service_name}', f'{nexus_port}:{nexus_port}',
-                '-n', nexus_namespace, '--address', '0.0.0.0'
+                f'svc/{awx_service_name}', f'{awx_port}:{awx_target_port}',
+                '-n', awx_namespace, '--address', '0.0.0.0'
             ])
-
-        instance_ip = "localhost"  # Adjust this if serving remotely
-        if instance_ip == 'localhost':
-            dashboard_url_nexus = f'http://localhost:{nexus_port}'
-        else:
-            dashboard_url_nexus = f'http://{instance_ip}:{nexus_port}'
-
-        return render_template('nexus_dashboard.html', dashboard_url_nexus=dashboard_url_nexus)
+        
+        dashboard_url_awx = f'http://localhost:{awx_port}'
+        return render_template('awx_dashboard.html', dashboard_url_awx=dashboard_url_awx)
+    
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': f'Error port-forwarding AWX service: {str(e)}'}), 500
 
 
 
 
-@app.route('/get_nexus_password', methods=['GET'])
-def get_nexus_password():
+
+@app.route('/get_awx_password', methods=['GET'])
+def get_awx_password():
     try:
-        # Run the kubectl exec command to read the Nexus admin password from the container
         result = subprocess.run(
-            ['kubectl', 'exec', '-n', 'nexus', 'deploy/nexus-nexus-repository-manager', '--', 'cat', '/nexus-data/admin.password'],
+            ['kubectl', 'get', 'secret', 'awx-demo-admin-password', '-n', 'awx', '-o', 'jsonpath={.data.password}'],
             capture_output=True, check=True, text=True
         )
-        password = result.stdout.strip()
-        return jsonify({'success': True, 'password': password})
+        encoded_password = result.stdout.strip()
+        decoded_password = subprocess.run(
+            ['base64', '--decode'],
+            input=encoded_password, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+        return jsonify({'success': True, 'password': decoded_password})
+    
     except subprocess.CalledProcessError as e:
-        error_message = f"Error retrieving Nexus password: {e.stderr or str(e)}"
+        error_message = f"Error retrieving AWX password: {e.stderr or str(e)}"
         return jsonify({'success': False, 'error': error_message}), 500
+
 
 
 ######################################################################################################
