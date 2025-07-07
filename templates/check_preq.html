@@ -220,6 +220,18 @@
                 </td>
             </tr>
 
+            <tr>
+                <td>docker-compose</td>
+                <td>
+                    {% if compose_installed %}
+                        <span style="color: green;">Installed</span>
+                    {% else %}
+                        <span style="color: red;">Not Installed</span>
+                        <button class="install-button" onclick="showInstallPrompt('docker-compose')">Install</button>
+                    {% endif %}
+                </td>
+            </tr>
+
            
         </table>
 

@@ -168,7 +168,6 @@
             </div>
         </div>
 
-
         <div class="tool-card">
             <div class="tool-icon">
                 <i class="fas fa-shield-alt"></i>
@@ -186,6 +185,28 @@
                 <button class="install-btn" onclick="installTool('chaos')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('chaos')">Delete</button>
                 <button class="install-btn" onclick="chaosmesh('chaos')">Chaos Mesh Details</button>
+            </div>
+        </div>
+
+
+        <div class="tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="tool-info">
+                <h3>AWX</h3>
+                <p>Install AWX.</p>
+            </div>
+            <div class="spinner-container"> <!-- Added spinner container -->
+                <div class="spinner" id="awx-spinner"> <!-- Added spinner ID -->
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                </div>
+            </div>
+            <div>
+                <button class="install-btn" onclick="installTool('awx')">Install</button>
+                <button class="delete-btn" onclick="deleteTool('awx')">Delete</button>
+                <button class="install-btn" onclick="awx('awx')">AWX Details</button>
+                <button class="password-btn" onclick="fetchAwxPassword()">AWX Password</button>
             </div>
         </div>
 
@@ -259,10 +280,31 @@
             window.open("/trivy", "_blank");
         }
 
+         function awx() {
+            window.open("/awx", "_blank");
+        }
+
+
+        function fetchAwxPassword() {
+                fetch('/get_awx_password')
+                .then(response => response.json())
+                .then(data => {
+                    alert('awx admin password: ' + data.password);
+                })
+    .catch(error => {
+        console.error('Error fetching awx password:', error);
+        alert('Error fetching awx password.');
+    });
+}
+
+
 
         function chaosmesh() {
             window.open("/chaosmesh", "_blank");
         }
+
+
+        
 
         function deleteTool(tool) {
             if (confirm(`Are you sure you want to delete ${tool.toUpperCase()}?`)) {

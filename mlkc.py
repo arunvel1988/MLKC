@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request,jsonify, redirect, session, url_for, Response
+from flask import flash
 import sqlite3
 import subprocess
 import yaml
@@ -482,12 +483,20 @@ def check_preq():
         python3_installed = False
         python3_output = 'Python3 is not installed'
 
+    try:
+        compose_output = subprocess.check_output(['docker-compose', 'version']).decode('utf-8').strip()
+        compose_installed = True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        compose_installed = False
+        compose_output = 'Helm is not installed'
+
     return render_template('check_preq.html',
                            docker_installed=docker_installed, docker_output=docker_output,
                            kubectl_installed=kubectl_installed, kubectl_output=kubectl_output,
                            kind_installed=kind_installed, kind_output=kind_output,
                            helm_installed=helm_installed, helm_output=helm_output,
-                           python3_installed=python3_installed, python3_output=python3_output)
+                           python3_installed=python3_installed, python3_output=python3_output,
+                           compose_installed=compose_installed, compose_output=compose_output)
 
 
 @app.route('/install_tool', methods=['POST'])
@@ -509,6 +518,9 @@ def install_tool():
     elif tool == 'python3':
         subprocess.run(['chmod', '+x', './scripts/install_python.sh'])
         subprocess.run(['./scripts/install_python3.sh'])  # Modify the path as necessary
+    elif tool == 'docker-compose':
+        subprocess.run(['chmod', '+x', './scripts/install_docker_compose.sh'])
+        subprocess.run(['./scripts/install_docker_compose.sh'])  # Modify the path as necessary
 
     return redirect(url_for('check_preq'))
 
@@ -1307,6 +1319,47 @@ def security_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'Trivy installed successfully'})
 
+
+            elif selected_tool == 'awx':
+                if is_awx_installed():
+                    return jsonify({'success': True, 'message': 'AWX is already installed'})
+
+    # Install AWX Operator
+                subprocess.run(['kubectl', 'create', 'namespace', 'awx'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'awx-operator', 'https://ansible-community.github.io/awx-operator-helm/'], check=True)
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'my-awx-operator', 'awx-operator/awx-operator', '-n', 'awx'], check=True)
+
+    # Wait for AWX Operator pod to be in Running state
+                subprocess.run([
+    'kubectl', 'wait',
+    '--for=condition=Available',
+    'deployment/awx-operator-controller-manager',
+    '-n', 'awx',
+    '--timeout=180s'
+], check=True)
+
+
+    # Define the AWX Custom Resource YAML
+                awx_cr_yaml = """
+            apiVersion: awx.ansible.com/v1beta1
+            kind: AWX
+            metadata:
+              name: awx-demo
+            spec:
+              service_type: nodeport
+            """
+
+    # Apply the AWX custom resource
+                apply_proc = subprocess.run(
+                    ['kubectl', 'apply', '-n', 'awx', '-f', '-'],
+                    input=awx_cr_yaml.encode(),
+                    check=True
+                )
+
+                return jsonify({'success': True, 'message': 'AWX installed successfully and custom resource applied'})
+
+
             elif selected_tool == 'opa':
                 if is_opa_installed():
                     return jsonify({'success': True, 'message': 'OPA is already installed'})
@@ -1375,6 +1428,12 @@ def security_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
                 return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
 
+            if selected_tool == 'awx':
+                if not is_awx_installed():
+                    return jsonify({'success': True, 'message': 'AWX is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'awx'], check=True)
+                return jsonify({'success': True, 'message': 'AWX deleted successfully'})
+
             elif selected_tool == 'trivy':
                 if not is_trivy_installed():
                     return jsonify({'success': True, 'message': 'trivy is not installed'})
@@ -1418,6 +1477,16 @@ def is_trivy_installed():
 def is_opa_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'gatekeeper-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+def is_awx_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'awx', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0
@@ -2534,24 +2603,76 @@ def nexus_dashboard():
         return jsonify({'success': False, 'error': f'Error port-forwarding Nexus service: {str(e)}'}), 500
 
 
+######################################################################################################
+# AWX
+#########################################################################################################
+
+@app.route('/awx', methods=['GET'])
+def awx():
+    instance_ip = get_instance_ip()
+    if instance_ip == 'localhost':
+        dashboard_url_awx = 'http://localhost:8282'
+    else:
+        dashboard_url_awx = f'http://{instance_ip}:8282'
+    return render_template('awx.html', dashboard_url_awx=dashboard_url_awx)
 
 
 
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
 
-@app.route('/get_nexus_password', methods=['GET'])
-def get_nexus_password():
+@app.route('/awx/dashboard', methods=['GET'])
+def awx_dashboard():
     try:
-        # Run the kubectl exec command to read the Nexus admin password from the container
+        awx_port = 8282  # Local port to forward to
+        awx_target_port = 80  # Target port of the service in the cluster
+        awx_namespace = 'awx'
+        awx_service_name = 'awx-demo-service'
+
+        if is_port_in_use(awx_port):
+            print(f"Port {awx_port} is already in use, skipping port forwarding.")
+        else:
+            subprocess.Popen([
+                'kubectl', 'port-forward',
+                f'svc/{awx_service_name}', f'{awx_port}:{awx_target_port}',
+                '-n', awx_namespace, '--address', '0.0.0.0'
+            ])
+        
+        dashboard_url_awx = f'http://localhost:{awx_port}'
+        return render_template('awx_dashboard.html', dashboard_url_awx=dashboard_url_awx)
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error port-forwarding AWX service: {str(e)}'}), 500
+
+
+
+
+
+@app.route('/get_awx_password', methods=['GET'])
+def get_awx_password():
+    try:
         result = subprocess.run(
-            ['kubectl', 'exec', '-n', 'nexus', 'deploy/nexus-nexus-repository-manager', '--', 'cat', '/nexus-data/admin.password'],
+            ['kubectl', 'get', 'secret', 'awx-demo-admin-password', '-n', 'awx', '-o', 'jsonpath={.data.password}'],
             capture_output=True, check=True, text=True
         )
-        password = result.stdout.strip()
-        return jsonify({'success': True, 'password': password})
+        encoded_password = result.stdout.strip()
+        decoded_password = subprocess.run(
+            ['base64', '--decode'],
+            input=encoded_password, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+        return jsonify({'success': True, 'password': decoded_password})
+    
     except subprocess.CalledProcessError as e:
-        error_message = f"Error retrieving Nexus password: {e.stderr or str(e)}"
+        error_message = f"Error retrieving AWX password: {e.stderr or str(e)}"
         return jsonify({'success': False, 'error': error_message}), 500
 
+
+
+######################################################################################################
+# AWX END
+#########################################################################################################
 ##########################################################################################################################
 
 
@@ -2566,6 +2687,99 @@ def minio():
     return render_template('minio.html', dashboard_url_minio=dashboard_url_minio)
 
 
+##########################################################################################
+# docker compose and portainer 
+#####################################################################################
+app.secret_key = 'supersecretkey'  # Required for flash messages
+
+# Upload folder for docker-compose files
+app.config['UPLOAD_FOLDER'] = './uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+def get_instance_ip():
+    # Returns local machine IP address or localhost fallback
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except Exception:
+        return 'localhost'
+
+@app.route('/docker-compose', methods=['GET'])
+def docker_compose():
+    instance_ip = get_instance_ip()
+    portainer_url = None
+
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=portainer", "--format", "{{.Names}}"],
+            capture_output=True, text=True, check=True
+        )
+        containers = result.stdout.strip().splitlines()
+        if "portainer" in containers:
+            portainer_url = f"http://{instance_ip}:9000"
+    except Exception:
+        portainer_url = None  # silently ignore errors
+
+    return render_template('docker_compose.html', portainer_url=portainer_url, instance_ip=instance_ip)
+
+@app.route('/docker-compose/install-portainer', methods=['POST'])
+def install_portainer():
+    try:
+        # Check if Portainer container exists
+        result = subprocess.run(
+            ["docker", "ps", "-a", "--filter", "name=portainer", "--format", "{{.Status}}"],
+            capture_output=True, text=True, check=True
+        )
+        status = result.stdout.strip()
+
+        if status:
+            if not status.lower().startswith("up"):
+                # Container exists but not running, start it
+                subprocess.run(["docker", "start", "portainer"], check=True)
+                flash('✅ Portainer container started.', 'success')
+            else:
+                flash('ℹ️ Portainer is already running.', 'info')
+        else:
+            # Create and run Portainer container
+            subprocess.run([
+                "docker", "run", "-d", "--name", "portainer",
+                "-p", "9000:9000", "-p", "9443:9443",
+                "--restart=always",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "-v", "portainer_data:/data", "portainer/portainer-ce"
+            ], check=True, capture_output=True, text=True)
+            flash('✅ Portainer installed and started successfully!', 'success')
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else str(e)
+        flash(f'❌ Error: {error_msg}', 'danger')
+
+    return redirect(url_for('docker_compose'))
+
+@app.route('/docker-compose/upload-compose', methods=['POST'])
+def upload_compose():
+    file = request.files.get('compose_file')
+    if file and (file.filename.endswith('.yml') or file.filename.endswith('.yaml')):
+        filename = file.filename
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        try:
+            subprocess.run(
+                ["docker-compose", "-f", file_path, "up", "-d"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            flash(f'✅ Compose file "{filename}" deployed successfully!', 'success')
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            flash(f'❌ Error deploying file: {error_msg}', 'danger')
+    else:
+        flash('⚠️ Please upload a valid .yml or .yaml file.', 'warning')
+
+    return redirect(url_for('docker_compose'))
+
+
+#####################################################################################
 @app.route('/minio/dashboard', methods=['GET'])
 def minio_dashboard():
     try:

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AWX Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .back-button:hover {
+            background-color: #d32f2f;
+        }
+
+        .dashboard-link {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .dashboard-link:hover {
+            color: #0056b3;
+        }
+
+        .info {
+            margin-top: 30px;
+        }
+
+        .info p {
+            margin-bottom: 10px;
+        }
+
+        .info a {
+            color: #007bff;
+            text-decoration: underline;
+        }
+
+        .info a:hover {
+            color: #0056b3;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AWX Dashboard</h1>
+        <p class="message">Click the link below to access the AWX dashboard:</p>
+        <p class="dashboard-link"><a href="{{ dashboard_url_awx }}" target="_blank">{{ dashboard_url_awx }}</a></p>
+        <a class="back-button" href="/awx">Back</a>
+
+        <div class="info">
+            <h2>About AWX</h2>
+            <p>AWX is the upstream open-source project for Red Hat Ansible Automation Controller.</p>
+            <p>It provides a web-based UI, REST API, and a task engine built on Ansible.</p>
+            <p>Learn more about AWX from the <a href="https://github.com/ansible/awx" target="_blank">official AWX GitHub page</a>.</p>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <p>If you're accessing this from a cloud instance, use the public IP address of your server in the URL.</p>
+        </div>
+    </div>
+
+    <script>
+        // Show modal on page load
+        window.onload = function() {
+            document.getElementById("myModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("myModal").style.display = "none";
+        }
+    </script>
+</body>
+</html>
