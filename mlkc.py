@@ -2608,7 +2608,7 @@ def nexus_dashboard():
 #########################################################################################################
 
 @app.route('/awx', methods=['GET'])
-def nexus():
+def awx():
     instance_ip = get_instance_ip()
     if instance_ip == 'localhost':
         dashboard_url_awx = 'http://localhost:8282'
