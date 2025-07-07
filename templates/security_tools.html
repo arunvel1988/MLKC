@@ -206,6 +206,7 @@
                 <button class="install-btn" onclick="installTool('awx')">Install</button>
                 <button class="delete-btn" onclick="deleteTool('awx')">Delete</button>
                 <button class="install-btn" onclick="awx('awx')">AWX Details</button>
+                <button class="password-btn" onclick="fetchAwxPassword()">AWX Password</button>
             </div>
         </div>
 
@@ -284,10 +285,26 @@
         }
 
 
+        function fetchAwxPassword() {
+                fetch('/get_awx_password')
+                .then(response => response.json())
+                .then(data => {
+                    alert('awx admin password: ' + data.password);
+                })
+    .catch(error => {
+        console.error('Error fetching awx password:', error);
+        alert('Error fetching awx password.');
+    });
+}
+
+
 
         function chaosmesh() {
             window.open("/chaosmesh", "_blank");
         }
+
+
+        
 
         function deleteTool(tool) {
             if (confirm(`Are you sure you want to delete ${tool.toUpperCase()}?`)) {
