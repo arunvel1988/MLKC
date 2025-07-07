@@ -1319,6 +1319,19 @@ def security_tools(cluster_name):
                 
                 return jsonify({'success': True, 'message': 'Trivy installed successfully'})
 
+
+            elif selected_tool == 'awx':
+                if is_awx_installed():
+                    return jsonify({'success': True, 'message': 'AWX is already installed'})
+                # Install AWX
+                subprocess.run(['kubectl', 'create', 'namespace', 'awx'], check=True)
+                subprocess.run(['helm', 'repo', 'add', 'awx-operator', 'https://ansible-community.github.io/awx-operator-helm/'], check=True)
+                
+                subprocess.run(['helm', 'repo', 'update'], check=True)
+                subprocess.run(['helm', 'install', 'my-awx-operator', 'awx-operator/awx-operator', '-n','awx'], check=True)               
+                
+                return jsonify({'success': True, 'message': 'AWX installed successfully'})
+
             elif selected_tool == 'opa':
                 if is_opa_installed():
                     return jsonify({'success': True, 'message': 'OPA is already installed'})
@@ -1387,6 +1400,12 @@ def security_tools(cluster_name):
                 subprocess.run(['kubectl', 'delete', 'ns', 'kyverno'], check=True)
                 return jsonify({'success': True, 'message': 'Kyverno deleted successfully'})
 
+            if selected_tool == 'awx':
+                if not is_awx_installed():
+                    return jsonify({'success': True, 'message': 'AWX is not installed'})
+                subprocess.run(['kubectl', 'delete', 'ns', 'awx'], check=True)
+                return jsonify({'success': True, 'message': 'AWX deleted successfully'})
+
             elif selected_tool == 'trivy':
                 if not is_trivy_installed():
                     return jsonify({'success': True, 'message': 'trivy is not installed'})
@@ -1430,6 +1449,16 @@ def is_trivy_installed():
 def is_opa_installed():
     try:
         result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'gatekeeper-system', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        output = result.stdout.decode('utf-8')
+        pods_info = json.loads(output)
+        return len(pods_info.get('items', [])) > 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+def is_awx_installed():
+    try:
+        result = subprocess.run(['kubectl', 'get', 'pods', '-n', 'awx', '-o', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         output = result.stdout.decode('utf-8')
         pods_info = json.loads(output)
         return len(pods_info.get('items', [])) > 0
