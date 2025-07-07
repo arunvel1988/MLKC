@@ -1332,13 +1332,13 @@ def security_tools(cluster_name):
 
     # Wait for AWX Operator pod to be in Running state
                 subprocess.run([
-                    'kubectl', 'wait', 
-                    '--for=condition=Ready', 
-                    'pod', 
-                    '-l=name=awx-operator', 
-                    '-n', 'awx', 
-                    '--timeout=180s'
-                ], check=True)
+    'kubectl', 'wait',
+    '--for=condition=Available',
+    'deployment/awx-operator-controller-manager',
+    '-n', 'awx',
+    '--timeout=180s'
+], check=True)
+
 
     # Define the AWX Custom Resource YAML
                 awx_cr_yaml = """
