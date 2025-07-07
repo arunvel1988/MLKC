@@ -1323,14 +1323,42 @@ def security_tools(cluster_name):
             elif selected_tool == 'awx':
                 if is_awx_installed():
                     return jsonify({'success': True, 'message': 'AWX is already installed'})
-                # Install AWX
+
+    # Install AWX Operator
                 subprocess.run(['kubectl', 'create', 'namespace', 'awx'], check=True)
                 subprocess.run(['helm', 'repo', 'add', 'awx-operator', 'https://ansible-community.github.io/awx-operator-helm/'], check=True)
-                
                 subprocess.run(['helm', 'repo', 'update'], check=True)
-                subprocess.run(['helm', 'install', 'my-awx-operator', 'awx-operator/awx-operator', '-n','awx'], check=True)               
-                
-                return jsonify({'success': True, 'message': 'AWX installed successfully'})
+                subprocess.run(['helm', 'install', 'my-awx-operator', 'awx-operator/awx-operator', '-n', 'awx'], check=True)
+
+    # Wait for AWX Operator pod to be in Running state
+                subprocess.run([
+                    'kubectl', 'wait', 
+                    '--for=condition=Ready', 
+                    'pod', 
+                    '-l=name=awx-operator', 
+                    '-n', 'awx', 
+                    '--timeout=180s'
+                ], check=True)
+
+    # Define the AWX Custom Resource YAML
+                awx_cr_yaml = """
+            apiVersion: awx.ansible.com/v1beta1
+            kind: AWX
+            metadata:
+              name: awx-demo
+            spec:
+              service_type: nodeport
+            """
+
+    # Apply the AWX custom resource
+                apply_proc = subprocess.run(
+                    ['kubectl', 'apply', '-n', 'awx', '-f', '-'],
+                    input=awx_cr_yaml.encode(),
+                    check=True
+                )
+
+                return jsonify({'success': True, 'message': 'AWX installed successfully and custom resource applied'})
+
 
             elif selected_tool == 'opa':
                 if is_opa_installed():
